@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Orders | KCX Crochet{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h2 class="fw-bold mb-4">All Orders</h2>
+
+  {% if orders %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Created</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>City</th>
+            <th>Total (₹)</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+          <tr>
+            <td>{{ order.id }}</td>
+            <td>{{ order.created_at.strftime("%d-%m-%Y %H:%M") if order.created_at else "-" }}</td>
+            <td>{{ order.customer_name }}</td>
+            <td>{{ order.phone }}</td>
+            <td>{{ order.city or "-" }}</td>
+            <td>{{ order.total_amount }}</td>
+            <td>{{ order.status or "Pending" }}</td>
+            <td>
+              <a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="btn btn-sm btn-outline-dark">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>No orders found yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.id }} | Admin{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <a href="{{ url_for('admin_orders') }}" class="btn btn-sm btn-outline-secondary mb-3">
+    ← Back to orders
+  </a>
+
+  <div class="d-flex align-items-center mb-3">
+    <h2 class="fw-bold me-3">Order #{{ order.id }}</h2>
+
+    <form action="{{ url_for('admin_set_status', order_id=order.id) }}" method="post" class="mb-0">
+      <div class="input-group">
+        <select name="status" class="form-select form-select-sm">
+          {% for s in ['Pending','Confirmed','Shipped','Completed','Cancelled'] %}
+            <option value="{{ s }}" {% if order.status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
+      </div>
+    </form>
+
+    <a href="{{ url_for('admin_orders_export') }}" class="btn btn-sm btn-outline-secondary ms-2">Export CSV</a>
+  </div>
+
+  <p class="text-muted mb-4">
+    Placed on {{ order.created_at.strftime("%d-%m-%Y %H:%M") if order.created_at else "-" }}
+  </p>
+
+  <div class="row g-4">
+    <!-- Customer Details -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="fw-semibold mb-3">Customer</h5>
+          <p class="mb-1"><strong>Name:</strong> {{ order.customer_name }}</p>
+          <p class="mb-1"><strong>Phone:</strong> {{ order.phone }}</p>
+          <p class="mb-1"><strong>Email:</strong> {{ order.email or "-" }}</p>
+          <p class="mb-1">
+            <strong>Address:</strong><br>
+            {{ order.address }}<br>
+            {{ order.city or "" }} {{ order.pincode or "" }}
+          </p>
+          <p class="mb-0">
+            <strong>Notes:</strong> {{ order.notes or "-" }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="fw-semibold mb-3">Items</h5>
+
+          {% if items %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in items %}
+                  <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td class="text-center">{{ item.quantity }}</td>
+                    <td class="text-end">₹{{ item.unit_price }}</td>
+                    <td class="text-end">₹{{ item.unit_price * item.quantity }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="mb-0">No items stored for this order.</p>
+          {% endif %}
+
+          <hr>
+          <div class="d-flex justify-content-between fw-bold">
+            <span>Total</span>
+            <span>₹{{ order.total_amount }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login | KCX Crochet{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:520px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h4 class="mb-3">Admin sign in</h4>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ 'danger' if cat=='danger' else ('success' if cat=='success' else 'info') }}" role="alert">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% endwith %}
+
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input name="password" type="password" class="form-control" required autofocus>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <button class="btn btn-dark" type="submit">Sign in</button>
+          <a class="small text-muted" href="/">Back to store</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Shop | KCX Crochet{% endblock %}
+
+{% block content %}
+
+<section class="py-5">
+  <div class="container">
+
+    <h2 class="fw-bold mb-4">All Products 🧶</h2>
+
+    {% if products %}
+      <div class="row g-3">
+        {% for product in products %}
+          <div class="col-6 col-md-3">
+  <a href="{{ url_for('product_detail', product_id=product.id) }}" class="text-decoration-none text-dark">
+    <div class="card border-0 shadow-sm product-card h-100">
+      <img
+        src="{{ url_for('static', filename=product.image_url) }}"
+        class="card-img-top"
+        alt="{{ product.name }}"
+      >
+      <div class="card-body">
+        <h6 class="fw-semibold mb-1">{{ product.name }}</h6>
+        <p class="small text-muted mb-2">
+          {{ product.description[:60] }}{% if product.description and product.description|length > 60 %}...{% endif %}
+        </p>
+        <p class="mb-2 fw-bold">₹{{ product.price }}</p>
+        <a href="/add/{{ product.id }}" class="btn btn-sm btn-dark">
+  Add to Cart
+</a>
+
+
+
+      </div>
+    </div>
+  </a>
+</div>
+
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No products found in the database.</p>
+    {% endif %}
+
+  </div>
+</section>
+
+{% endblock %}

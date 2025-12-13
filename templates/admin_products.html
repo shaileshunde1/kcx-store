@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Products | KCX Crochet{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold">Products</h2>
+    <a href="{{ url_for('admin_product_add') }}" class="btn btn-dark">Add Product</a>
+  </div>
+
+  {% if products %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Bestseller</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td style="width:90px">
+            {% if p.image_url %}
+              <img src="{{ url_for('static', filename=p.image_url) }}" alt="{{ p.name }}" style="height:60px; width:60px; object-fit:cover; border-radius:6px;">
+            {% else %}
+              <div style="height:60px; width:60px; background:#f1f1f1; border-radius:6px; display:flex;align-items:center;justify-content:center;color:#999;">No</div>
+            {% endif %}
+          </td>
+          <td>{{ p.name }}</td>
+          <td>₹{{ p.price }}</td>
+          <td>{% if p.is_bestseller %}Yes{% else %}No{% endif %}</td>
+          <td class="text-end">
+            <a href="{{ url_for('admin_product_edit', product_id=p.id) }}" class="btn btn-sm btn-outline-primary me-2">Edit</a>
+
+            <form action="{{ url_for('admin_product_delete', product_id=p.id) }}" method="post" style="display:inline-block" onsubmit="return confirm('Delete product?');">
+              <button class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p>No products yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

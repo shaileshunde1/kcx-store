@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Pay - Order {{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:720px;">
+  <h3>Pay for Order #{{ order.id }}</h3>
+  <p>Total: ₹{{ order.total_amount }}</p>
+
+  <button id="payNowBtn" class="btn btn-dark">Pay with Card</button>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  document.getElementById('payNowBtn').addEventListener('click', function () {
+    startRazorpay({{ order.id }});
+  });
+
+  async function startRazorpay(localOrderId) {
+    const resp = await fetch('/create_order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: localOrderId })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      alert("Error creating order: " + (data.error || JSON.stringify(data)));
+      return;
+    }
+
+    const options = {
+      "key": data.key,
+      "amount": data.amount,
+      "currency": data.currency,
+      "name": "KCX Crochet",
+      "description": `Order #${localOrderId}`,
+      "order_id": data.razorpay_order_id,
+      "handler": async function (response) {
+        const verify = await fetch('/verify_payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            local_order_id: localOrderId
+          })
+        });
+        const vresp = await verify.json();
+        if (verify.ok && vresp.status === "success") {
+          window.location.href = `/order-success/${localOrderId}`;
+        } else {
+          alert("Payment verification failed: " + (vresp.error || JSON.stringify(vresp)));
+        }
+      },
+      "prefill": {
+        "name": "{{ order.customer_name|e }}",
+        "email": "{{ order.email|e }}",
+        "contact": "{{ order.phone|e }}"
+      },
+      "theme": { "color": "#111827" }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{% if product %}Edit{% else %}Add{% endif %} Product | Admin{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <a href="{{ url_for('admin_products') }}" class="btn btn-sm btn-outline-secondary mb-3">← Back to products</a>
+
+  <div class="card">
+    <div class="card-body">
+      <h4 class="mb-3">{% if product %}Edit{% else %}Add{% endif %} Product</h4>
+
+      <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input name="name" class="form-control" value="{{ product.name if product else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Price (₹)</label>
+          <input name="price" type="number" class="form-control" value="{{ product.price if product else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="4">{{ product.description if product else '' }}</textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Image (optional)</label>
+          {% if product and product.image_url %}
+            <div class="mb-2">
+              <img src="{{ url_for('static', filename=product.image_url) }}" alt="image" style="height:100px; object-fit:cover; border-radius:6px;">
+            </div>
+          {% endif %}
+          <input name="image" type="file" class="form-control" accept="image/*">
+          <div class="form-text">Recommended ~800×800, jpg/png</div>
+        </div>
+
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="is_bestseller" id="best" {% if product and product.is_bestseller %}checked{% endif %}>
+          <label class="form-check-label" for="best">Bestseller</label>
+        </div>
+
+        <button class="btn btn-dark" type="submit">{% if product %}Save changes{% else %}Create product{% endif %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

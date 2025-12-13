@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} | KCX Crochet{% endblock %}
+
+{% block content %}
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <!-- Image -->
+      <div class="col-md-5">
+        <div class="card border-0 shadow-sm">
+          <img
+            src="{{ url_for('static', filename=product.image_url) }}"
+            class="card-img-top"
+            alt="{{ product.name }}"
+          >
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="col-md-7">
+        <p class="text-muted mb-1">KCX Crochet · Handmade</p>
+        <h1 class="h3 fw-bold mb-2">{{ product.name }}</h1>
+
+        <p class="fs-4 fw-semibold mb-3">₹{{ product.price }}</p>
+
+        <p class="text-muted mb-4">
+          {{ product.description }}
+        </p>
+
+       <div class="d-flex gap-2 mb-4">
+  <a href="/add/{{ product.id }}" class="btn btn-dark btn-lg px-4">
+    Add to Cart
+  </a>
+  <a href="/shop" class="btn btn-outline-secondary btn-lg px-4">Back to Shop</a>
+</div>
+
+        {% if product.is_bestseller %}
+          <span class="badge bg-danger">Bestseller</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

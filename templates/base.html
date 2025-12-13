@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}KCX Crochet Store{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    >
+
+    <style>
+      body { background-color: #fff8f4; }
+      .hero-section { padding: 4rem 0 3rem 0; }
+      .navbar-brand { font-weight: 600; letter-spacing: 0.06em; }
+      .product-card img { object-fit: cover; height: 220px; }
+      .btn-primary-soft {
+        background-color: #f4d3c4;
+        border-color: #f4d3c4;
+        color: #5b4336;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+  <div class="container">
+
+    <!-- Brand -->
+    <a class="navbar-brand" href="/">KCX Crochet</a>
+
+    <!-- Right side menu -->
+    <div class="ms-auto d-flex align-items-center">
+
+      <!-- Shop link -->
+      <a class="nav-link me-3" href="/shop">Shop</a>
+
+      <!-- ADMIN DROPDOWN -->
+      {% if session.get('is_admin') %}
+      <div class="nav-item dropdown me-3">
+        <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button"
+           data-bs-toggle="dropdown" aria-expanded="false">
+          Admin
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{{ url_for('admin_index') }}">Dashboard</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('admin_orders') }}">Orders</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('admin_products') }}">Products</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="{{ url_for('admin_logout') }}">Logout</a></li>
+        </ul>
+      </div>
+      {% else %}
+      <a class="nav-link me-3" href="{{ url_for('admin_login') }}">Admin</a>
+      {% endif %}
+
+      <!-- CART BUTTON -->
+      <a class="nav-link"
+         data-bs-toggle="offcanvas"
+         href="#cartOffcanvas"
+         role="button"
+         aria-controls="cartOffcanvas">
+         Cart ({{ cart_count_global or 0 }})
+      </a>
+
+    </div>
+
+  </div>
+</nav>
+
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-4 mt-5 border-top">
+      <div class="container text-center small text-muted">
+        &copy; 2025 KCX Crochet Store.
+      </div>
+    </footer>
+
+    <!-- Cart Offcanvas -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="cartOffcanvasLabel">Your Cart</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        {% if cart_items_global %}
+          {% for item in cart_items_global %}
+            <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
+              <div style="width: 60px; height: 60px;" class="me-3 flex-shrink-0">
+                <img
+                  src="{{ url_for('static', filename=item.product.image_url) }}"
+                  alt="{{ item.product.name }}"
+                  class="img-fluid rounded"
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                >
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-1">{{ item.product.name }}</h6>
+                <p class="small text-muted mb-1">₹{{ item.product.price }}</p>
+
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="d-inline-flex align-items-center">
+                    <a href="{{ url_for('decrease_quantity', product_id=item.product.id) }}"
+                       class="btn btn-sm btn-outline-secondary">-</a>
+                    <span class="mx-2">{{ item.quantity }}</span>
+                    <a href="{{ url_for('increase_quantity', product_id=item.product.id) }}"
+                       class="btn btn-sm btn-outline-secondary">+</a>
+                  </div>
+                  <a href="{{ url_for('remove_from_cart', product_id=item.product.id) }}"
+                     class="btn btn-link text-danger small p-0">
+                    Remove
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+
+          <hr>
+          <div class="d-flex justify-content-between mb-3">
+            <strong>Total</strong>
+            <strong>₹{{ cart_total_global }}</strong>
+          </div>
+          <a href="{{ url_for('checkout') }}" class="btn btn-dark w-100 mb-2">
+  Checkout
+</a>
+
+          <a href="{{ url_for('shop') }}" class="btn btn-outline-secondary w-100">Continue shopping</a>
+        {% else %}
+          <p>Your cart is empty.</p>
+          <a href="{{ url_for('shop') }}" class="btn btn-dark w-100 mt-2">Start shopping</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Bootstrap JS bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    {% if cart_open_global %}
+      var offcanvasEl = document.getElementById('cartOffcanvas');
+      if (offcanvasEl) {
+        var bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl);
+        bsOffcanvas.show();
+        // ❌ no auto-close, user can close with the X
+      }
+    {% endif %}
+  });
+</script>
+
+
+  </body>
+</html>

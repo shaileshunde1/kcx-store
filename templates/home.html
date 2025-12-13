@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Home | KCX Crochet Store{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-6 mb-4 mb-md-0">
+        <span class="badge bg-light text-dark mb-3">
+          Handmade with love in India
+        </span>
+        <h1 class="display-5 fw-bold mb-3">
+          Cozy Crochet Creations <span>❤️</span>
+        </h1>
+        <p class="lead text-muted mb-4">
+          Plushies, keychains, hair accessories and forever flowers –
+          all crafted to be the cutest gifts for your favourite people.
+        </p>
+        <a href="/shop" class="btn btn-dark btn-lg px-4">
+          Shop All Products
+        </a>
+      </div>
+      <div class="col-md-6">
+        <div class="hero-image shadow-sm">
+          <img
+            src="https://images.pexels.com/photos/3945636/pexels-photo-3945636.jpeg"
+            class="img-fluid"
+            alt="Cozy crochet items"
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Bestsellers Section -->
+<section class="py-4">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end mb-3">
+      <div>
+        <h2 class="section-title">Our Bestsellers</h2>
+        <p class="section-subtitle">Customer favourites that sell out fast.</p>
+      </div>
+      <a href="/shop" class="small text-decoration-none">View all →</a>
+    </div>
+
+    <div class="row g-3">
+      {% if products %}
+        {% for product in products %}
+          <div class="col-6 col-md-3">
+            <a href="/product/{{ product.id }}" class="text-decoration-none text-dark">
+              <div class="card border-0 shadow-sm product-card h-100">
+                <div class="position-relative">
+                  <img
+                    src="{{ url_for('static', filename=product.image_url) }}"
+                    class="card-img-top"
+                    alt="{{ product.name }}"
+                  >
+                  {% if product.is_bestseller %}
+                    <span class="badge bg-danger position-absolute top-0 start-0 m-2">
+                      Bestseller
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="card-body">
+                  <h6 class="card-title mb-1">{{ product.name }}</h6>
+                  <p class="small text-muted mb-2">
+                    {{ product.description[:70] }}{% if product.description and product.description|length > 70 %}...{% endif %}
+                  </p>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">₹{{ product.price }}</span>
+                    <a href="/add/{{ product.id }}" class="btn btn-sm btn-outline-dark">
+                      Add to Cart
+
+                    </a>
+
+                      
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No bestseller products yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}
