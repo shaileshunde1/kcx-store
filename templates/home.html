@@ -53,15 +53,39 @@
           <div class="col-6 col-md-3">
             <a href="/product/{{ product.id }}" class="text-decoration-none text-dark">
               <div class="card border-0 shadow-sm product-card h-100">
-                <div class="position-relative">
+                <div class="position-relative product-image-container">
                   <img
                     src="{{ url_for('static', filename=product.image_url) }}"
-                    class="card-img-top"
+                    class="card-img-top main-product-image"
                     alt="{{ product.name }}"
                   >
-                  {% if product.is_bestseller %}
-                    <span class="badge bg-danger position-absolute top-0 start-0 m-2">
-                      Bestseller
+                  
+                  <!-- Hidden images for hover effect -->
+                  {% if product.images and product.images|length > 1 %}
+                    {% for img in product.images[1:4] %}
+                      <img
+                        src="{{ url_for('static', filename=img.image_url) }}"
+                        class="card-img-top hover-product-image"
+                        alt="{{ product.name }}"
+                        style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"
+                      >
+                    {% endfor %}
+                  {% endif %}
+                  
+                  <!-- Badges Container - Only Bestseller and New Launch -->
+                  <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1">
+                    {% if product.is_bestseller %}
+                      <span class="badge bg-danger">Bestseller</span>
+                    {% endif %}
+                    {% if product.is_new_launch %}
+                      <span class="badge" style="background-color: #4CAF50;">New Launch</span>
+                    {% endif %}
+                  </div>
+                  
+                  <!-- Sale Badge in top right -->
+                  {% if product.sale_price %}
+                    <span class="badge position-absolute top-0 end-0 m-2" style="background-color: #FF6B6B; font-size: 0.9rem;">
+                      SALE
                     </span>
                   {% endif %}
                 </div>
@@ -71,14 +95,20 @@
                     {{ product.description[:70] }}{% if product.description and product.description|length > 70 %}...{% endif %}
                   </p>
                   <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">₹{{ product.price }}</span>
+                    <!-- Price Display with Sale -->
+                    <div>
+                      {% if product.sale_price %}
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="text-decoration-line-through text-muted small">₹{{ product.price }}</span>
+                          <span class="fw-bold" style="color: #FF6B6B;">₹{{ product.sale_price }}</span>
+                        </div>
+                      {% else %}
+                        <span class="fw-semibold">₹{{ product.price }}</span>
+                      {% endif %}
+                    </div>
                     <a href="/add/{{ product.id }}" class="btn btn-sm btn-outline-dark">
                       Add to Cart
-
                     </a>
-
-                      
-                    </button>
                   </div>
                 </div>
               </div>
@@ -91,5 +121,331 @@
     </div>
   </div>
 </section>
+
+<!-- Category Sections -->
+{% if category_products %}
+  {% for category, products in category_products.items() %}
+  <section class="py-4">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-end mb-3">
+        <div>
+          <h2 class="section-title">{{ category }}</h2>
+          <p class="section-subtitle">Browse our {{ category|lower }} collection</p>
+        </div>
+        <a href="/shop?category={{ category }}" class="small text-decoration-none">View all →</a>
+      </div>
+
+      <div class="row g-3">
+        {% for product in products %}
+          <div class="col-6 col-md-3">
+            <a href="/product/{{ product.id }}" class="text-decoration-none text-dark">
+              <div class="card border-0 shadow-sm product-card h-100">
+                <div class="position-relative">
+                  <img
+                    src="{{ url_for('static', filename=product.image_url) }}"
+                    class="card-img-top"
+                    alt="{{ product.name }}"
+                  >
+                  <!-- Only Bestseller and New Launch badges - NO category badge -->
+                  {% if product.is_bestseller or product.is_new_launch %}
+                  <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1">
+                    {% if product.is_bestseller %}
+                      <span class="badge bg-danger">Bestseller</span>
+                    {% endif %}
+                    {% if product.is_new_launch %}
+                      <span class="badge" style="background-color: #4CAF50;">New Launch</span>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                  
+                  <!-- Sale Badge -->
+                  {% if product.sale_price %}
+                    <span class="badge position-absolute top-0 end-0 m-2" style="background-color: #FF6B6B;">
+                      SALE
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="card-body">
+                  <h6 class="card-title mb-1">{{ product.name }}</h6>
+                  <p class="small text-muted mb-2">
+                    {{ product.description[:70] }}{% if product.description and product.description|length > 70 %}...{% endif %}
+                  </p>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <!-- Price Display with Sale -->
+                    <div>
+                      {% if product.sale_price %}
+                        <div class="d-flex flex-column">
+                          <span class="text-decoration-line-through text-muted" style="font-size: 0.85rem;">₹{{ product.price }}</span>
+                          <span class="fw-bold" style="color: #FF6B6B;">₹{{ product.sale_price }}</span>
+                        </div>
+                      {% else %}
+                        <span class="fw-semibold">₹{{ product.price }}</span>
+                      {% endif %}
+                    </div>
+                    <a href="/add/{{ product.id }}" class="btn btn-sm btn-outline-dark">
+                      Add to Cart
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+{% endif %}
+
+<!-- Customer Reviews Section -->
+<section class="py-5" style="background-color: #f8f9fa;">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="section-title">What Our Customers Say</h2>
+      <p class="section-subtitle">Real reviews from real customers ❤️</p>
+    </div>
+
+    <div class="row g-4">
+      <!-- Review 1 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-primary rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                P
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Priya Sharma</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "Absolutely love my crochet keychain! The quality is amazing and it's so cute. Perfect gift for my best friend. Will definitely order more!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Mini Bouquet</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 2 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                A
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Aisha Khan</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "The forever flowers are stunning! They look so real and the craftsmanship is incredible. My room looks so much prettier now. Highly recommend!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Forever Flowers</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 3 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-danger rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                R
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Riya Patel</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "Got a desk buddy for my workspace and it brings me so much joy! Super fast delivery and beautiful packaging. Worth every penny!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Desk Buddies</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 4 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-warning rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                S
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Sneha Reddy</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "The yarn quality is top-notch! I ordered custom colors and they turned out exactly as I imagined. Customer service was also very helpful!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Yarn</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 5 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-info rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                M
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Meera Gupta</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "Beautiful bookmark! Perfect for book lovers. The detail and colors are gorgeous. Already ordered two more as gifts for friends!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Bookmarks</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Review 6 -->
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                N
+              </div>
+              <div class="ms-3">
+                <h6 class="mb-0 fw-bold">Neha Singh</h6>
+                <div class="text-warning">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-muted mb-0" style="line-height: 1.8;">
+              "Ordered seasonal decorations for Diwali and they were absolutely stunning! Handmade with so much love and care. Will be a repeat customer for sure!"
+            </p>
+            <small class="text-muted d-block mt-3">Purchased: Seasonal</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5">
+      <p class="text-muted mb-0">Join thousands of happy customers! ✨</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section-title {
+    font-weight: 700;
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .section-subtitle {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+  
+  .product-card {
+    transition: transform 0.2s;
+    height: 100%;
+  }
+  
+  .product-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .product-image-container {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .main-product-image {
+    transition: opacity 0.3s ease;
+  }
+  
+  .hero-image {
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  
+  .hero-image img {
+    border-radius: 20px;
+  }
+
+  /* Badge styling improvements */
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    font-weight: 600;
+    z-index: 10;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const productCards = document.querySelectorAll('.product-card');
+  
+  productCards.forEach(card => {
+    const container = card.querySelector('.product-image-container');
+    if (!container) return;
+    
+    const hoverImages = container.querySelectorAll('.hover-product-image');
+    
+    if (hoverImages.length === 0) return;
+    
+    let currentImageIndex = 0;
+    let intervalId = null;
+    
+    // Start cycling through images on hover
+    card.addEventListener('mouseenter', function() {
+      currentImageIndex = 0;
+      
+      intervalId = setInterval(() => {
+        // Hide all hover images
+        hoverImages.forEach(img => img.style.display = 'none');
+        
+        // Show current hover image
+        if (hoverImages[currentImageIndex]) {
+          hoverImages[currentImageIndex].style.display = 'block';
+        }
+        
+        // Move to next image
+        currentImageIndex = (currentImageIndex + 1) % hoverImages.length;
+      }, 800); // Change image every 800ms
+    });
+    
+    // Stop cycling and reset on mouse leave
+    card.addEventListener('mouseleave', function() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      
+      // Hide all hover images
+      hoverImages.forEach(img => img.style.display = 'none');
+      currentImageIndex = 0;
+    });
+  });
+});
+</script>
 
 {% endblock %}

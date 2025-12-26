@@ -1,4 +1,3 @@
-<!-- templates/checkout.html -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -6,106 +5,402 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Checkout - KCX Crochet</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-      body { background:#fff8f4; }
-      .container { max-width: 800px; }
+      body { background:#fff8f4; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+      .container { max-width: 900px; }
+
+      .order-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      }
+
+      .wrap-selector {
+        display: none;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #FFF8F0;
+        border-radius: 8px;
+        border: 2px dashed #D4A574;
+      }
+
+      .wrap-selector.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .wrap-option {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .wrap-option:hover {
+        border-color: #8B6F47;
+        background: #FFF8F0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139, 111, 71, 0.15);
+      }
+
+      .wrap-option.selected {
+        border-color: #8B6F47;
+        background: #FFF8F0;
+        box-shadow: 0 0 0 3px rgba(139, 111, 71, 0.1);
+      }
+
+      .wrap-icon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #F5EDE0;
+      }
+
+      .wrap-option.selected .wrap-icon {
+        background: #8B6F47;
+        color: white;
+      }
+
+      .gift-checkbox {
+        transform: scale(1.2);
+        cursor: pointer;
+      }
+
+      .price-breakdown {
+        background: #F8F9FA;
+        border-radius: 10px;
+        padding: 1.5rem;
+      }
+
+      .price-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed #dee2e6;
+      }
+
+      .price-row:last-child {
+        border-bottom: none;
+      }
+
+      .total-row {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #8B6F47;
+        padding-top: 1rem;
+        border-top: 2px solid #8B6F47;
+      }
+
+      .product-thumb {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+
+      .btn-dark {
+        background: #8B6F47;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .btn-dark:hover {
+        background: #6D5638;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139, 111, 71, 0.3);
+      }
+
+      .section-header {
+        color: #8B6F47;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
     </style>
   </head>
   <body>
     <nav class="navbar navbar-light bg-white shadow-sm mb-4">
       <div class="container">
-        <a class="navbar-brand" href="/">KCX Crochet</a>
+        <a class="navbar-brand fw-bold" style="color: #8B6F47;" href="/">
+          <i class="bi bi-flower2"></i> KCX Crochet
+        </a>
         <a class="nav-link" href="/shop">Shop</a>
       </div>
     </nav>
 
-    <main class="container">
-      <h2 class="mb-3">Checkout</h2>
+    <main class="container py-4">
+      <h2 class="mb-4 fw-bold" style="color: #8B6F47;">
+        <i class="bi bi-bag-check"></i> Checkout
+      </h2>
 
-      <!-- CART SUMMARY (read-only) -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <h6>Order summary</h6>
-          <ul class="list-unstyled mb-0">
-            {% for item in cart_items %}
-            <li class="d-flex justify-content-between">
-              <div>{{ item.product.name }} × {{ item.quantity }}</div>
-              <div>₹{{ item.product.price * item.quantity }}</div>
-            </li>
-            {% endfor %}
-          </ul>
+      <div class="row">
+        <!-- Left Column: Order Items & Gift Wrap -->
+        <div class="col-lg-7 mb-4">
+          <div class="section-header">
+            <i class="bi bi-cart3"></i> Your Order
+          </div>
 
-          <hr>
-          <div class="d-flex justify-content-between fw-bold">
-            <div>Total</div>
-            <div>₹{{ total }}</div>
+          {% for item in cart_items %}
+          <div class="order-item" data-product-id="{{ item.product.id }}" data-price="{{ item.product.sale_price if item.product.sale_price else item.product.price }}" data-quantity="{{ item.quantity }}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="d-flex gap-3 flex-grow-1">
+                {% if item.product.image_url %}
+                <img src="{{ url_for('static', filename=item.product.image_url) }}" class="product-thumb" alt="{{ item.product.name }}">
+                {% endif %}
+                <div class="flex-grow-1">
+                  <h6 class="mb-1 fw-bold">{{ item.product.name }}</h6>
+                  <p class="text-muted small mb-2">Quantity: {{ item.quantity }}</p>
+                  
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input gift-checkbox" 
+                      type="checkbox" 
+                      id="gift_{{ item.product.id }}" 
+                      data-product-id="{{ item.product.id }}"
+                      onchange="toggleWrapSelector({{ item.product.id }})"
+                    >
+                    <label class="form-check-label small" for="gift_{{ item.product.id }}">
+                      <i class="bi bi-gift"></i> Add gift wrap
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="text-end">
+                <div class="fw-bold">₹{{ (item.product.sale_price if item.product.sale_price else item.product.price) * item.quantity }}</div>
+              </div>
+            </div>
+
+            <!-- Gift Wrap Selector -->
+            <div class="wrap-selector" id="wrapSelector_{{ item.product.id }}">
+              <h6 class="mb-3 fw-semibold">
+                <i class="bi bi-gift-fill"></i> Choose Gift Wrap Style
+              </h6>
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="wrap-option" onclick="selectWrap({{ item.product.id }}, 'jute', 30)">
+                    <div class="wrap-icon">🌿</div>
+                    <div>
+                      <div class="fw-semibold">Jute</div>
+                      <div class="small text-muted">₹30</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="wrap-option" onclick="selectWrap({{ item.product.id }}, 'newspaper', 20)">
+                    <div class="wrap-icon">📰</div>
+                    <div>
+                      <div class="fw-semibold">Newspaper</div>
+                      <div class="small text-muted">₹20</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="wrap-option" onclick="selectWrap({{ item.product.id }}, 'pastel', 50)">
+                    <div class="wrap-icon">🎨</div>
+                    <div>
+                      <div class="fw-semibold">Pastel</div>
+                      <div class="small text-muted">₹50</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="wrap-option" onclick="selectWrap({{ item.product.id }}, 'golden', 60)">
+                    <div class="wrap-icon">✨</div>
+                    <div>
+                      <div class="fw-semibold">Golden</div>
+                      <div class="small text-muted">₹60</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Right Column: Form & Summary -->
+        <div class="col-lg-5">
+          <!-- Price Summary -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="section-header">
+                <i class="bi bi-receipt"></i> Order Summary
+              </div>
+              <div class="price-breakdown">
+                <div class="price-row">
+                  <span>Subtotal</span>
+                  <span id="subtotal">₹{{ total }}</span>
+                </div>
+                <div class="price-row" id="wrapCostRow" style="display: none;">
+                  <span><i class="bi bi-gift"></i> Gift Wrap</span>
+                  <span id="wrapCost">₹0</span>
+                </div>
+                <div class="price-row total-row">
+                  <span>Total</span>
+                  <span id="grandTotal">₹{{ total }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checkout Form -->
+          <form id="checkoutForm" method="POST" class="card">
+            <div class="card-body">
+              <div class="section-header">
+                <i class="bi bi-person"></i> Delivery Details
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Full Name</label>
+                <input name="name" class="form-control" required placeholder="Your name" />
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label small fw-semibold">Phone</label>
+                  <input name="phone" class="form-control" required placeholder="Phone number" />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label small fw-semibold">Email (optional)</label>
+                  <input name="email" type="email" class="form-control" placeholder="you@example.com" />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Address</label>
+                <textarea name="address" rows="2" class="form-control" required placeholder="Street, house no."></textarea>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label small fw-semibold">City</label>
+                  <input name="city" class="form-control" required />
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label small fw-semibold">Pincode</label>
+                  <input name="pincode" class="form-control" required />
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Notes (optional)</label>
+                <textarea name="notes" rows="2" class="form-control" placeholder="Any special instructions?"></textarea>
+              </div>
+
+              <!-- Hidden input for gift wrap data -->
+              <input type="hidden" name="gift_wraps" id="giftWrapsData">
+
+              <div class="d-grid">
+                <button id="payBtn" type="button" class="btn btn-dark btn-lg">
+                  <i class="bi bi-lock-fill me-2"></i>Pay Securely ₹<span id="payAmount">{{ total }}</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div class="text-center mt-3">
+            <a href="/shop" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left"></i> Continue Shopping
+            </a>
           </div>
         </div>
       </div>
-
-      <!-- CHECKOUT FORM -->
-      <form id="checkoutForm" method="POST" class="card p-3 mb-3">
-        <div class="mb-3">
-          <label class="form-label">Full name</label>
-          <input name="name" class="form-control" required placeholder="Your name" />
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Phone</label>
-            <input name="phone" class="form-control" required placeholder="Phone number" />
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Email (optional)</label>
-            <input name="email" class="form-control" placeholder="you@example.com" />
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Address</label>
-          <textarea name="address" rows="2" class="form-control" required placeholder="Street, house no."></textarea>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">City</label>
-            <input name="city" class="form-control" required />
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Pincode</label>
-            <input name="pincode" class="form-control" required />
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Notes (optional)</label>
-          <textarea name="notes" rows="2" class="form-control" placeholder="Anything to tell us?"></textarea>
-        </div>
-
-        <!-- Pay button (JS handles creating order and opening Razorpay) -->
-        <div class="d-grid">
-          <button id="payBtn" type="button" class="btn btn-dark">Pay Securely with Razorpay</button>
-        </div>
-      </form>
-
-      <a href="/shop" class="btn btn-outline-secondary">Continue shopping</a>
     </main>
 
-    <!-- Razorpay + handler -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
+    const giftWraps = {}; // { productId: { type: 'jute', price: 30 } }
+    const baseTotal = {{ total }};
+
+    function toggleWrapSelector(productId) {
+      const checkbox = document.getElementById(`gift_${productId}`);
+      const selector = document.getElementById(`wrapSelector_${productId}`);
+      
+      if (checkbox.checked) {
+        selector.classList.add('show');
+      } else {
+        selector.classList.remove('show');
+        // Remove wrap if unchecked
+        delete giftWraps[productId];
+        updateTotals();
+      }
+    }
+
+    function selectWrap(productId, type, price) {
+      // Update selection UI
+      const selector = document.getElementById(`wrapSelector_${productId}`);
+      const options = selector.querySelectorAll('.wrap-option');
+      options.forEach(opt => opt.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      
+      // Store selection
+      giftWraps[productId] = { type, price };
+      updateTotals();
+    }
+
+    function updateTotals() {
+      let wrapTotal = 0;
+      Object.values(giftWraps).forEach(wrap => {
+        wrapTotal += wrap.price;
+      });
+      
+      const grandTotal = baseTotal + wrapTotal;
+      
+      // Update display
+      document.getElementById('subtotal').textContent = '₹' + baseTotal;
+      
+      if (wrapTotal > 0) {
+        document.getElementById('wrapCostRow').style.display = 'flex';
+        document.getElementById('wrapCost').textContent = '₹' + wrapTotal;
+      } else {
+        document.getElementById('wrapCostRow').style.display = 'none';
+      }
+      
+      document.getElementById('grandTotal').textContent = '₹' + grandTotal;
+      document.getElementById('payAmount').textContent = grandTotal;
+      
+      // Update hidden input
+      document.getElementById('giftWrapsData').value = JSON.stringify(giftWraps);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       const payBtn = document.getElementById("payBtn");
       const form = document.getElementById("checkoutForm");
 
       payBtn.addEventListener("click", function () {
-        // basic client-side validation
         if (!form.checkValidity()) {
           form.reportValidity();
           return;
         }
 
-        // 1) create local order via AJAX
+        // Create local order via AJAX
         fetch("/checkout_ajax", {
           method: "POST",
           body: new FormData(form)
@@ -118,7 +413,7 @@
           }
           const localOrderId = data.order_id;
 
-          // 2) request razorpay order
+          // Request razorpay order
           return fetch("/create_order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -139,7 +434,6 @@
               description: "Order Payment",
               order_id: payload.razorpay_order_id,
               handler: function (response) {
-                // verify payment server-side
                 fetch("/verify_payment", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -159,7 +453,7 @@
                   }
                 }).catch(e => { console.error(e); alert("Verification request failed"); });
               },
-              theme: { color: "#F4D3C4" }
+              theme: { color: "#8B6F47" }
             };
 
             const rzp = new Razorpay(options);
@@ -173,6 +467,5 @@
       });
     });
     </script>
-
   </body>
 </html>

@@ -1,23 +1,24 @@
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, render_template, session, redirect, url_for, request, make_response, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from twilio.rest import Client
 import csv
-from flask import make_response, request
 import os
 from werkzeug.utils import secure_filename
 from functools import wraps
-from flask import session, flash
 from dotenv import load_dotenv
 import razorpay
-from flask import jsonify
 import hmac, hashlib
-from flask import jsonify
 import traceback
+import json
+
+load_dotenv(override=True)
+from utils.image_utils import save_product_image
 
 
-
-
+PAYMENT_CREATED = "CREATED"
+PAYMENT_PAID = "PAID"
+PAYMENT_FAILED = "FAILED"
 
 load_dotenv()
 
@@ -27,7 +28,18 @@ app.secret_key = "mysecret"
 # --- Upload configuration ---
 UPLOAD_FOLDER = os.path.join("static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "products")
+
+# CATEGORIES CONFIGURATION
+CATEGORIES = [
+    "Seasonal",
+    "Desk Buddies",
+    "Keyrings",
+    "Mini Bouquet",
+    "Yarn",
+    "Bookmarks",
+    "Forever Flowers"
+]
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -39,11 +51,8 @@ RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 def get_razorpay_client():
     return razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
-
 # Admin auth config
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")  # fallback for dev only
-
-
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
 
 # --- DATABASE SETUP ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -51,6 +60,9 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(basedir, "st
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+from flask_migrate import Migrate
+migrate = Migrate(app, db)
 
 # ---- Twilio SMS Config (local dev only) ----
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
@@ -63,13 +75,58 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     price = db.Column(db.Integer, nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    image_url = db.Column(db.String(300), nullable=True)
+    description = db.Column(db.Text)
+    image_url = db.Column(db.String(255))
     is_bestseller = db.Column(db.Boolean, default=False)
-
-    def __repr__(self):
-        return f"<Product {self.name}>"
+    category = db.Column(db.String(50))
     
+    # NEW FIELDS
+    is_new_launch = db.Column(db.Boolean, default=False)
+    sale_price = db.Column(db.Integer, nullable=True)  # If set, product is on sale
+
+    images = db.relationship(
+        "ProductImage",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+
+class ProductImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(255), nullable=False)
+    order_index = db.Column(db.Integer, default=0)  # For image ordering
+
+    product_id = db.Column(
+        db.Integer,
+        db.ForeignKey("product.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    product = db.relationship(
+        "Product",
+        back_populates="images"
+    )
+
+class ProductVariant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id", ondelete="CASCADE"), nullable=False)
+    variant_type = db.Column(db.String(20), nullable=False)  # 'color' or 'size'
+    name = db.Column(db.String(50), nullable=False)  # 'Red', 'Large', etc.
+    code = db.Column(db.String(20))  # Color hex code
+    price_adjustment = db.Column(db.Integer, default=0)
+    image_indices = db.Column(db.Text)  # JSON string of image indices
+    
+    product = db.relationship("Product", backref="variants")
+
+class GiftWrap(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_item_id = db.Column(db.Integer, db.ForeignKey("order_item.id"), nullable=False)
+    wrap_type = db.Column(db.String(50), nullable=False)  # 'jute', 'newspaper', etc.
+    wrap_price = db.Column(db.Integer, nullable=False)
+    
+    order_item = db.relationship("OrderItem", backref="gift_wrap")
+
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     customer_name = db.Column(db.String(120), nullable=False)
@@ -81,12 +138,8 @@ class Order(db.Model):
     notes = db.Column(db.Text)
     total_amount = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # order workflow & payment fields
-    status = db.Column(db.String(30), default="Pending")            # Pending / Confirmed / Shipped / Completed / Cancelled
-    payment_status = db.Column(db.String(30), default="Unpaid")     # Unpaid / Paid / Failed
-
-    # razorpay fields
+    status = db.Column(db.String(30), default="Pending")
+    payment_status = db.Column(db.String(30), default="Unpaid")
     razorpay_order_id = db.Column(db.String(120), nullable=True)
     razorpay_payment_id = db.Column(db.String(120), nullable=True)
     razorpay_signature = db.Column(db.String(300), nullable=True)
@@ -108,7 +161,6 @@ class OrderItem(db.Model):
         return f"<OrderItem {self.product_name} x{self.quantity}>"
 
 
-
 # ------------ CART HELPERS ------------
 
 def get_cart():
@@ -127,8 +179,10 @@ def build_cart():
     for product_id, qty in cart.items():
         product = Product.query.get(int(product_id))
         if product:
+            # Use sale price if available, otherwise regular price
+            effective_price = product.sale_price if product.sale_price else product.price
             items.append({"product": product, "quantity": qty})
-            total += product.price * qty
+            total += effective_price * qty
             count += qty
 
     return items, total, count
@@ -143,6 +197,7 @@ def inject_cart():
         cart_total_global=total,
         cart_count_global=count,
         cart_open_global=open_flag,
+        categories_global=CATEGORIES
     )
 
 
@@ -151,18 +206,52 @@ def inject_cart():
 @app.route("/")
 def home():
     bestsellers = Product.query.filter_by(is_bestseller=True).all()
-    return render_template("home.html", products=bestsellers)
+    
+    # Get products by category for home page
+    category_products = {}
+    for category in CATEGORIES:
+        products = Product.query.filter_by(category=category).limit(4).all()
+        if products:
+            category_products[category] = products
+    
+    return render_template("home.html", products=bestsellers, category_products=category_products)
 
 
 @app.route("/shop")
 def shop():
-    products = Product.query.all()
-    return render_template("shop.html", products=products)
+    category = request.args.get('category')
+    
+    if category and category in CATEGORIES:
+        products = Product.query.filter_by(category=category).all()
+    else:
+        products = Product.query.all()
+    
+    return render_template("shop.html", products=products, selected_category=category)
 
 @app.route("/product/<int:product_id>")
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
-    return render_template("product.html", product=product)
+    
+    # Get suggested products from same category or random products
+    if product.category:
+        suggested = Product.query.filter(
+            Product.category == product.category,
+            Product.id != product_id
+        ).limit(4).all()
+        
+        # If not enough from same category, add random products
+        if len(suggested) < 4:
+            additional = Product.query.filter(
+                Product.id != product_id
+            ).order_by(db.func.random()).limit(4 - len(suggested)).all()
+            suggested.extend(additional)
+    else:
+        # Get random products
+        suggested = Product.query.filter(
+            Product.id != product_id
+        ).order_by(db.func.random()).limit(4).all()
+    
+    return render_template("product.html", product=product, suggested_products=suggested)
 
 @app.route("/create_order", methods=["POST"])
 def create_order():
@@ -171,11 +260,10 @@ def create_order():
     if not local_order_id:
         return jsonify({"error": "missing order_id"}), 400
 
-    order = Order.query.get(local_order_id)
+    order = db.session.get(Order, local_order_id)
     if not order:
         return jsonify({"error": "order not found"}), 404
 
-    # sanity-check amount
     try:
         amount_paisa = int(order.total_amount) * 100
     except Exception:
@@ -194,13 +282,10 @@ def create_order():
             "payment_capture": 1
         })
     except Exception as e:
-        # print full traceback to flask console for debugging
         print("ERROR creating razorpay order:", type(e), e)
         traceback.print_exc()
-        # return the exception string to frontend (safe in dev)
         return jsonify({"error": "razorpay_error", "detail": str(e)}), 500
 
-    # store returned razorpay order id
     order.razorpay_order_id = razor_order.get("id")
     db.session.commit()
 
@@ -232,15 +317,16 @@ def verify_payment():
     try:
         client.utility.verify_payment_signature(params)
     except razorpay.errors.SignatureVerificationError as e:
-        order = Order.query.get(local_order_id)
+        order = db.session.get(Order, local_order_id)
         if order:
-            order.payment_status = "Failed"
+            order.payment_status = PAYMENT_FAILED
             db.session.commit()
         return jsonify({"status": "failure", "error": str(e)}), 400
 
-    order = Order.query.get(local_order_id)
-    if order:
-        order.payment_status = "Paid"
+    order = db.session.get(Order, local_order_id)
+
+    if order and order.payment_status != PAYMENT_PAID:
+        order.payment_status = PAYMENT_PAID
         order.razorpay_payment_id = r_payment_id
         order.razorpay_signature = r_signature
         db.session.commit()
@@ -254,21 +340,37 @@ def razorpay_webhook():
     signature = request.headers.get("X-Razorpay-Signature", "")
 
     if secret:
-        computed = hmac.new(bytes(secret, 'utf-8'), body, hashlib.sha256).hexdigest()
+        computed = hmac.new(
+            secret.encode("utf-8"),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+
         if not hmac.compare_digest(computed, signature):
             return "invalid signature", 400
 
     event = request.get_json()
     etype = event.get("event")
+
     if etype == "payment.captured":
         payment = event.get("payload", {}).get("payment", {}).get("entity", {})
         r_payment_id = payment.get("id")
         r_order_id = payment.get("order_id")
+
+        if not r_payment_id or not r_order_id:
+            return jsonify({"ok": True})
+
         local_order = Order.query.filter_by(razorpay_order_id=r_order_id).first()
-        if local_order:
-            local_order.payment_status = "Paid"
-            local_order.razorpay_payment_id = r_payment_id
-            db.session.commit()
+
+        if not local_order:
+            return jsonify({"ok": True})
+
+        if local_order.payment_status == PAYMENT_PAID:
+            return jsonify({"ok": True})
+
+        local_order.payment_status = PAYMENT_PAID
+        local_order.razorpay_payment_id = r_payment_id
+        db.session.commit()
 
     return jsonify({"ok": True})
 
@@ -279,7 +381,6 @@ def admin_required(view_func):
     @wraps(view_func)
     def wrapped(*args, **kwargs):
         if not session.get("is_admin"):
-            # preserve next path so we can redirect back after login
             return redirect(url_for("admin_login", next=request.path))
         return view_func(*args, **kwargs)
     return wrapped
@@ -287,7 +388,6 @@ def admin_required(view_func):
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
-    # if already logged in, go to admin orders
     if session.get("is_admin"):
         return redirect(url_for("admin_orders"))
 
@@ -295,13 +395,11 @@ def admin_login():
         pw = request.form.get("password", "")
         if pw == ADMIN_PASSWORD:
             session["is_admin"] = True
-            # optional: small flash message
             flash("Admin login successful", "success")
             nxt = request.args.get("next") or url_for("admin_orders")
             return redirect(nxt)
         else:
             flash("Wrong password", "danger")
-            # fall through to show form again
 
     return render_template("admin_login.html")
 
@@ -322,17 +420,14 @@ def admin_products():
 @app.route("/admin")
 @admin_required
 def admin_index():
-    # quick metrics (non-expensive)
     orders_count = Order.query.count()
     products_count = Product.query.count()
-    # today's orders
     today = datetime.utcnow().date()
     todays_count = Order.query.filter(db.func.date(Order.created_at) == today).count()
     return render_template("admin_index.html",
                            orders_count=orders_count,
                            products_count=products_count,
                            todays_count=todays_count)
-
 
 
 @app.route("/admin/products/add", methods=["GET", "POST"])
@@ -342,74 +437,174 @@ def admin_product_add():
         name = request.form.get("name")
         price = int(request.form.get("price") or 0)
         description = request.form.get("description")
-        is_bestseller = True if request.form.get("is_bestseller") == "on" else False
-
-        image_file = request.files.get("image")
-        image_path = None
-        if image_file and allowed_file(image_file.filename):
-            filename = secure_filename(image_file.filename)
-            # make filename unique: prefix with timestamp
-            fname = f"{int(datetime.utcnow().timestamp())}_{filename}"
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], fname)
-            # ensure folder exists
-            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-            image_file.save(save_path)
-            image_path = os.path.join("uploads", fname)  # store relative to static/
+        is_bestseller = request.form.get("is_bestseller") == "on"
+        is_new_launch = request.form.get("is_new_launch") == "on"
+        category = request.form.get("category")
+        
+        sale_price_str = request.form.get("sale_price", "").strip()
+        sale_price = int(sale_price_str) if sale_price_str else None
 
         p = Product(
             name=name,
             price=price,
             description=description,
-            image_url=image_path,
-            is_bestseller=is_bestseller
+            image_url=None,
+            is_bestseller=is_bestseller,
+            is_new_launch=is_new_launch,
+            category=category,
+            sale_price=sale_price
         )
         db.session.add(p)
         db.session.commit()
+
+        # Handle multiple images
+        files = request.files.getlist("images")
+        for idx, file in enumerate(files):
+            if file and file.filename:
+                image_url = save_product_image(file)
+                if idx == 0:
+                    p.image_url = image_url
+                db.session.add(
+                    ProductImage(
+                        product_id=p.id,
+                        image_url=image_url,
+                        order_index=idx
+                    )
+                )
+
+        # Handle variants
+        import json
+        color_variants_json = request.form.get("color_variants", "[]")
+        size_variants_json = request.form.get("size_variants", "[]")
+        
+        try:
+            color_variants = json.loads(color_variants_json)
+            for cv in color_variants:
+                if cv.get('name'):
+                    db.session.add(ProductVariant(
+                        product_id=p.id,
+                        variant_type='color',
+                        name=cv.get('name'),
+                        code=cv.get('code'),
+                        price_adjustment=int(cv.get('price_adj', 0)),
+                        image_indices=json.dumps(cv.get('images', []))
+                    ))
+        except:
+            pass
+        
+        try:
+            size_variants = json.loads(size_variants_json)
+            for sv in size_variants:
+                if sv.get('name'):
+                    db.session.add(ProductVariant(
+                        product_id=p.id,
+                        variant_type='size',
+                        name=sv.get('name'),
+                        price_adjustment=int(sv.get('price_adj', 0)),
+                        image_indices=json.dumps(sv.get('images', []))
+                    ))
+        except:
+            pass
+
+        db.session.commit()
         return redirect(url_for("admin_products"))
 
-    return render_template("admin_product_form.html", product=None)
+    return render_template("admin_product_form.html", product=None, categories=CATEGORIES)
 
 
 @app.route("/admin/products/edit/<int:product_id>", methods=["GET", "POST"])
 @admin_required
 def admin_product_edit(product_id):
     product = Product.query.get_or_404(product_id)
+    
     if request.method == "POST":
         product.name = request.form.get("name")
         product.price = int(request.form.get("price") or 0)
         product.description = request.form.get("description")
-        product.is_bestseller = True if request.form.get("is_bestseller") == "on" else False
+        product.is_bestseller = request.form.get("is_bestseller") == "on"
+        product.is_new_launch = request.form.get("is_new_launch") == "on"
+        product.category = request.form.get("category")
+        
+        sale_price_str = request.form.get("sale_price", "").strip()
+        product.sale_price = int(sale_price_str) if sale_price_str else None
 
-        image_file = request.files.get("image")
-        if image_file and allowed_file(image_file.filename):
-            # delete old file if exists
-            if product.image_url:
-                try:
-                    old_path = os.path.join("static", product.image_url)
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                except Exception:
-                    pass
+        # Handle image order
+        import json
+        image_order_json = request.form.get("image_order", "")
+        if image_order_json:
+            try:
+                image_order = json.loads(image_order_json)
+                for idx, img_id in enumerate(image_order):
+                    img = ProductImage.query.get(int(img_id))
+                    if img:
+                        img.order_index = idx
+                        if idx == 0:
+                            product.image_url = img.image_url
+            except:
+                pass
 
-            filename = secure_filename(image_file.filename)
-            fname = f"{int(datetime.utcnow().timestamp())}_{filename}"
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], fname)
-            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-            image_file.save(save_path)
-            product.image_url = os.path.join("uploads", fname)
+        # Handle new images
+        files = request.files.getlist("images")
+        if files and files[0].filename:
+            current_max_index = db.session.query(db.func.max(ProductImage.order_index)).filter_by(product_id=product.id).scalar() or -1
+            for idx, file in enumerate(files):
+                if file and file.filename and allowed_file(file.filename):
+                    image_url = save_product_image(file)
+                    if not product.image_url:
+                        product.image_url = image_url
+                    db.session.add(
+                        ProductImage(
+                            product_id=product.id,
+                            image_url=image_url,
+                            order_index=current_max_index + idx + 1
+                        )
+                    )
+
+        # Update variants
+        ProductVariant.query.filter_by(product_id=product.id).delete()
+        
+        color_variants_json = request.form.get("color_variants", "[]")
+        size_variants_json = request.form.get("size_variants", "[]")
+        
+        try:
+            color_variants = json.loads(color_variants_json)
+            for cv in color_variants:
+                if cv.get('name'):
+                    db.session.add(ProductVariant(
+                        product_id=product.id,
+                        variant_type='color',
+                        name=cv.get('name'),
+                        code=cv.get('code'),
+                        price_adjustment=int(cv.get('price_adj', 0)),
+                        image_indices=json.dumps(cv.get('images', []))
+                    ))
+        except:
+            pass
+        
+        try:
+            size_variants = json.loads(size_variants_json)
+            for sv in size_variants:
+                if sv.get('name'):
+                    db.session.add(ProductVariant(
+                        product_id=product.id,
+                        variant_type='size',
+                        name=sv.get('name'),
+                        price_adjustment=int(sv.get('price_adj', 0)),
+                        image_indices=json.dumps(sv.get('images', []))
+                    ))
+        except:
+            pass
 
         db.session.commit()
         return redirect(url_for("admin_products"))
 
-    return render_template("admin_product_form.html", product=product)
-
+    return render_template("admin_product_form.html", product=product, categories=CATEGORIES)
 
 @app.route("/admin/products/delete/<int:product_id>", methods=["POST"])
 @admin_required
 def admin_product_delete(product_id):
     product = Product.query.get_or_404(product_id)
 
-    # delete image file if exists
     if product.image_url:
         try:
             path = os.path.join("static", product.image_url)
@@ -421,6 +616,7 @@ def admin_product_delete(product_id):
     db.session.delete(product)
     db.session.commit()
     return redirect(url_for("admin_products"))
+
 @app.route("/admin/orders")
 @admin_required
 def admin_orders():
@@ -446,6 +642,38 @@ def admin_set_status(order_id):
         db.session.commit()
     return redirect(url_for("admin_order_detail", order_id=order_id))
 
+@app.route("/admin/products/delete-image/<int:image_id>", methods=["POST"])
+@admin_required
+def admin_delete_image(image_id):
+    try:
+        image = ProductImage.query.get_or_404(image_id)
+        product = image.product
+        
+        try:
+            image_path = os.path.join("static", image.image_url)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Error deleting image file: {e}")
+        
+        if product.image_url == image.image_url:
+            remaining_images = ProductImage.query.filter(
+                ProductImage.product_id == product.id,
+                ProductImage.id != image_id
+            ).first()
+            
+            if remaining_images:
+                product.image_url = remaining_images.image_url
+            else:
+                product.image_url = None
+        
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error deleting image: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/admin/orders/export")
 @admin_required
@@ -471,11 +699,7 @@ def add_to_cart(product_id):
     cart = get_cart()
     cart[str(product_id)] = cart.get(str(product_id), 0) + 1
     session["cart"] = cart
-
-    # 🔹 Tell frontend to open cart after this request
     session["open_cart"] = True
-
-    # Go back to the page user was on (home/shop/product)
     return redirect(request.referrer or url_for("shop"))
 
 
@@ -484,10 +708,7 @@ def increase_quantity(product_id):
     cart = get_cart()
     cart[str(product_id)] = cart.get(str(product_id), 0) + 1
     session["cart"] = cart
-
-    # keep cart open
     session["open_cart"] = True
-
     return redirect(request.referrer or url_for("cart"))
 
 
@@ -500,10 +721,7 @@ def decrease_quantity(product_id):
         if cart[pid] <= 0:
             cart.pop(pid)
     session["cart"] = cart
-
-    # keep cart open
     session["open_cart"] = True
-
     return redirect(request.referrer or url_for("cart"))
 
 
@@ -512,10 +730,7 @@ def remove_from_cart(product_id):
     cart = get_cart()
     cart.pop(str(product_id), None)
     session["cart"] = cart
-
-    # keep cart open
     session["open_cart"] = True
-
     return redirect(request.referrer or url_for("cart"))
 
 
@@ -534,7 +749,6 @@ def order_success(order_id):
 def checkout():
     items, total, count = build_cart()
 
-    # if cart is empty, don't allow checkout
     if not items:
         return redirect(url_for("shop"))
 
@@ -547,7 +761,6 @@ def checkout():
         pincode = request.form.get("pincode")
         notes = request.form.get("notes")
 
-        # create order
         order = Order(
             customer_name=customer_name,
             phone=phone,
@@ -560,37 +773,33 @@ def checkout():
         )
 
         db.session.add(order)
-        db.session.flush()   # order.id available here
+        db.session.flush()
 
-        # TODO: if you want to save each cart line item, loop items here
-        # Save individual order items
         for item in items:
-         oi = OrderItem(
-        order_id=order.id,
-        product_id=item["product"].id,
-        product_name=item["product"].name,
-        unit_price=item["product"].price,
-        quantity=item["quantity"],
-        )
-        db.session.add(oi)
-
+            effective_price = item["product"].sale_price if item["product"].sale_price else item["product"].price
+            oi = OrderItem(
+                order_id=order.id,
+                product_id=item["product"].id,
+                product_name=item["product"].name,
+                unit_price=effective_price,
+                quantity=item["quantity"],
+            )
+            db.session.add(oi)
 
         db.session.commit()
-
-        # clear cart
         session["cart"] = {}
 
-        # ----- SMS NOTIFICATION -----
         print(">>> ABOUT TO SEND SMS FOR ORDER", order.id)
 
         try:
-            client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
+            client = Client(account_sid, auth_token)
             message_body = (
-    f"KCX Crochet order #{order.id} | ₹{total} | "
-    f"{customer_name}, {phone}, {city} {pincode}"
-)
+                f"KCX Crochet order #{order.id} | ₹{total} | "
+                f"{customer_name}, {phone}, {city} {pincode}"
+            )
 
+            TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER")
+            ADMIN_PHONE_NUMBER = os.getenv("ADMIN_PHONE_NUMBER")
 
             client.messages.create(
                 body=message_body,
@@ -602,22 +811,18 @@ def checkout():
 
         except Exception as e:
             print("SMS FAILED:", e)
-        # ----------------------------
 
         return redirect(url_for("order_success", order_id=order.id))
 
-    # GET request → show checkout page
     return render_template("checkout.html", cart_items=items, total=total, count=count)
 
 @app.route("/checkout_ajax", methods=["POST"])
 def checkout_ajax():
-    # build cart and totals like your checkout handler
     items, total, count = build_cart()
 
     if not items:
         return jsonify({"error": "cart_empty"}), 400
 
-    # read form fields
     customer_name = request.form.get("name") or "Customer"
     phone = request.form.get("phone") or ""
     email = request.form.get("email") or ""
@@ -625,8 +830,20 @@ def checkout_ajax():
     city = request.form.get("city") or ""
     pincode = request.form.get("pincode") or ""
     notes = request.form.get("notes") or ""
+    
+    # ADD THIS: Get gift wrap data
+    import json
+    gift_wraps_json = request.form.get("gift_wraps", "{}")
+    gift_wraps = {}
+    try:
+        gift_wraps = json.loads(gift_wraps_json)
+    except:
+        pass
+    
+    # Calculate total with gift wraps
+    wrap_total = sum(wrap.get('price', 0) for wrap in gift_wraps.values())
+    final_total = total + wrap_total
 
-    # create Order and OrderItems (same as your checkout logic)
     order = Order(
         customer_name=customer_name,
         phone=phone,
@@ -635,34 +852,40 @@ def checkout_ajax():
         city=city,
         pincode=pincode,
         notes=notes,
-        total_amount=total,
+        total_amount=final_total,  # CHANGE: Use final_total instead of total
         payment_status="Unpaid",
         status="Pending"
     )
     db.session.add(order)
-    db.session.flush()  # gives order.id
+    db.session.flush()
 
-    # save each item
     for it in items:
         prod = it["product"]
         qty = it["quantity"]
+        effective_price = prod.sale_price if prod.sale_price else prod.price
         oi = OrderItem(
             order_id=order.id,
             product_id=prod.id,
             product_name=prod.name,
-            unit_price=prod.price,
+            unit_price=effective_price,
             quantity=qty
         )
         db.session.add(oi)
+        db.session.flush()
+        
+        # ADD THIS: Handle gift wrap for this item
+        product_id_str = str(prod.id)
+        if product_id_str in gift_wraps:
+            wrap_data = gift_wraps[product_id_str]
+            db.session.add(GiftWrap(
+                order_item_id=oi.id,
+                wrap_type=wrap_data.get('type'),
+                wrap_price=wrap_data.get('price')
+            ))
 
     db.session.commit()
 
-    # keep cart until payment succeeds or clear here if you prefer
-    # session["cart"] = {}
-
-    # tell frontend to open cart? not needed here
-    return jsonify({"order_id": order.id, "total": total})
-
+    return jsonify({"order_id": order.id, "total": final_total})  # CHANGE: Return final_total
 
 
 # ------------ MAIN ------------
@@ -672,6 +895,4 @@ with app.app_context():
     
 if __name__ == "__main__":
     app.run(debug=True)
-
-
 

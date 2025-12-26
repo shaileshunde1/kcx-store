@@ -6,45 +6,183 @@
 <div class="container py-5">
   <a href="{{ url_for('admin_products') }}" class="btn btn-sm btn-outline-secondary mb-3">← Back to products</a>
 
-  <div class="card">
-    <div class="card-body">
-      <h4 class="mb-3">{% if product %}Edit{% else %}Add{% endif %} Product</h4>
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <h4 class="mb-4 fw-bold">{% if product %}Edit{% else %}Add{% endif %} Product</h4>
 
-      <form method="post" enctype="multipart/form-data">
-        <div class="mb-3">
-          <label class="form-label">Name</label>
-          <input name="name" class="form-control" value="{{ product.name if product else '' }}" required>
+      <form method="post" enctype="multipart/form-data" id="productForm">
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Name</label>
+          <input name="name" class="form-control form-control-lg" value="{{ product.name if product else '' }}" required>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Price (₹)</label>
-          <input name="price" type="number" class="form-control" value="{{ product.price if product else '' }}" required>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Price (₹)</label>
+          <input name="price" type="number" class="form-control form-control-lg" value="{{ product.price if product else '' }}" required>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Description</label>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Description</label>
           <textarea name="description" class="form-control" rows="4">{{ product.description if product else '' }}</textarea>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Image (optional)</label>
-          {% if product and product.image_url %}
-            <div class="mb-2">
-              <img src="{{ url_for('static', filename=product.image_url) }}" alt="image" style="height:100px; object-fit:cover; border-radius:6px;">
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Category</label>
+          <select name="category" class="form-select form-select-lg" required>
+            <option value="">-- Select Category --</option>
+            {% for category in categories %}
+              <option value="{{ category }}" {% if product and product.category == category %}selected{% endif %}>{{ category }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- IMAGE MANAGEMENT WITH REORDERING -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold d-block mb-3">
+            <i class="bi bi-images"></i> Product Images
+          </label>
+          
+          {% if product and product.images %}
+            <div class="mb-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <p class="text-muted small mb-0">
+                  Current Gallery ({{ product.images|length }} images) 
+                  <span class="badge bg-info ms-2"><i class="bi bi-arrows-move"></i> Drag to reorder</span>
+                </p>
+                {% if product.images|length > 0 %}
+                  <button type="button" class="btn btn-sm btn-outline-danger" id="deleteAllBtn">
+                    <i class="bi bi-trash"></i> Delete All
+                  </button>
+                {% endif %}
+              </div>
+              
+              <div id="existingImagesGrid" class="row g-3 mb-4">
+                {% for img in product.images %}
+                  <div class="col-6 col-md-4 col-lg-3 image-card" data-image-id="{{ img.id }}" draggable="true">
+                    <div class="position-relative image-wrapper">
+                      <div class="drag-handle"><i class="bi bi-grip-vertical"></i></div>
+                      <img src="{{ url_for('static', filename=img.image_url) }}" alt="Product" class="img-fluid rounded shadow-sm">
+                      <div class="image-overlay">
+                        <button type="button" class="btn btn-sm btn-light set-main-btn" data-image-id="{{ img.id }}" title="Set as main">
+                          <i class="bi bi-star"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger delete-image-btn" data-image-id="{{ img.id }}">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                      {% if loop.index == 1 %}
+                        <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">
+                          <i class="bi bi-star-fill"></i> Main
+                        </span>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="image_order" id="imageOrderInput">
             </div>
           {% endif %}
-          <input name="image" type="file" class="form-control" accept="image/*">
-          <div class="form-text">Recommended ~800×800, jpg/png</div>
+
+          <div class="upload-section">
+            <label for="imageInput" class="upload-label">
+              <div class="upload-area">
+                <i class="bi bi-cloud-upload display-4 text-primary mb-3"></i>
+                <h5 class="mb-2">Drop images here or click to browse</h5>
+                <p class="text-muted small mb-0">Supports: JPG, PNG (Recommended: 800×800px)</p>
+              </div>
+            </label>
+            <input id="imageInput" name="images" type="file" class="d-none" accept="image/*" multiple>
+          </div>
+
+          <div id="imagePreview" class="row g-3 mt-3"></div>
+
+          <div class="form-text mt-2">
+            <i class="bi bi-info-circle"></i> First image is the main image. Drag to reorder or click star to set as main.
+          </div>
         </div>
 
-        <div class="form-check mb-3">
-          <input class="form-check-input" type="checkbox" name="is_bestseller" id="best" {% if product and product.is_bestseller %}checked{% endif %}>
-          <label class="form-check-label" for="best">Bestseller</label>
+        <!-- COLOR VARIANTS -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold d-block mb-3">
+            <i class="bi bi-palette"></i> Color Variants (Optional)
+          </label>
+          <div class="border rounded p-3 bg-light">
+            <div id="colorVariantList"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addColorBtn">
+              <i class="bi bi-plus-circle"></i> Add Color
+            </button>
+          </div>
+          <div class="form-text mt-2">Add colors and map images to each variant.</div>
         </div>
 
-        <button class="btn btn-dark" type="submit">{% if product %}Save changes{% else %}Create product{% endif %}</button>
+        <!-- SIZE VARIANTS -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold d-block mb-3">
+            <i class="bi bi-rulers"></i> Size Variants (Optional)
+          </label>
+          <div class="border rounded p-3 bg-light">
+            <div id="sizeVariantList"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addSizeBtn">
+              <i class="bi bi-plus-circle"></i> Add Size
+            </button>
+          </div>
+          <div class="form-text mt-2">Add sizes and optionally map images.</div>
+        </div>
+
+        <input type="hidden" name="color_variants" id="colorVariantsData">
+        <input type="hidden" name="size_variants" id="sizeVariantsData">
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Sale Price (Optional)</label>
+          <input name="sale_price" type="number" class="form-control form-control-lg" value="{{ product.sale_price if product and product.sale_price else '' }}" placeholder="Leave empty if not on sale">
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold d-block mb-3">Product Tags</label>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_bestseller" id="best" {% if product and product.is_bestseller %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="best">
+              <span class="badge bg-danger me-2">Bestseller</span> Mark as Bestseller
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_new_launch" id="newLaunch" {% if product and product.is_new_launch %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="newLaunch">
+              <span class="badge bg-success me-2">New Launch</span> Mark as New Launch
+            </label>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark btn-lg px-4" type="submit">
+            <i class="bi bi-check-circle"></i> {% if product %}Save Changes{% else %}Create Product{% endif %}
+          </button>
+          <a href="{{ url_for('admin_products') }}" class="btn btn-outline-secondary btn-lg px-4">Cancel</a>
+        </div>
       </form>
     </div>
   </div>
 </div>
+
+<style>
+.card{border-radius:12px}.upload-label{cursor:pointer;display:block}
+.upload-area{border:3px dashed #dee2e6;border-radius:12px;padding:3rem 2rem;text-align:center;transition:all .3s;background:#f8f9fa}
+.upload-area:hover,.upload-area.dragover{border-color:#0d6efd;background:#e7f1ff;transform:translateY(-2px)}
+.image-card{transition:transform .2s,opacity .2s;cursor:move}.image-card.dragging{opacity:.5;transform:scale(.95)}
+.drag-handle{position:absolute;top:5px;right:5px;background:rgba(255,255,255,.9);padding:5px 8px;border-radius:4px;cursor:move;z-index:10;font-size:1.2rem;color:#666}
+.image-wrapper{position:relative;overflow:hidden;border-radius:8px;aspect-ratio:1}
+.image-wrapper img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+.image-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;gap:.5rem;align-items:center;justify-content:center;opacity:0;transition:opacity .3s}
+.image-wrapper:hover .image-overlay{opacity:1}.image-wrapper:hover img{transform:scale(1.05)}
+.variant-item{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:1rem;margin-bottom:.75rem}
+.color-preview{width:40px;height:40px;border-radius:50%;border:2px solid #dee2e6;display:inline-block}
+.img-checkbox{width:60px;height:60px;border:2px solid #dee2e6;border-radius:4px;overflow:hidden;cursor:pointer;transition:all .2s}
+.img-checkbox.selected{border-color:#0d6efd;box-shadow:0 0 0 3px rgba(13,110,253,.2)}
+.img-checkbox img{width:100%;height:100%;object-fit:cover}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+const input=document.getElementById("imageInput"),preview=document.getElementById("imagePreview"),uploadArea=document.querySelector(".upload-area"),existingGrid=document.getElementById("existingImagesGrid");let files=[],allImages=[],colorVariants=[],sizeVariants=[],colorCounter=0,sizeCounter=0;function preventDefaults(e){e.preventDefault(),e.stopPropagation()}['dragenter','dragover','dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,preventDefaults,!1)),['dragenter','dragover'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.add('dragover'))),['dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.remove('dragover'))),uploadArea.addEventListener('drop',e=>handleFiles(e.dataTransfer.files)),uploadArea.addEventListener('click',()=>input.click()),input.addEventListener("change",()=>handleFiles(input.files));function handleFiles(e){preview.innerHTML="",files=Array.from(e);files.forEach((e,t)=>{const a=new FileReader;a.onload=a=>{const o=document.createElement("div");o.className="col-6 col-md-4 col-lg-3";const n=document.createElement("div");n.className="preview-wrapper position-relative";const r=document.createElement("img");r.src=a.target.result;const i=document.createElement("button");i.type="button",i.className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2",i.innerHTML='<i class="bi bi-trash"></i>',i.onclick=()=>{files.splice(t,1),o.remove(),updateFileInput()};const s=document.createElement("span");0===t&&(s.className="badge bg-primary position-absolute top-0 start-0 m-2",s.textContent="Main",n.appendChild(s)),n.appendChild(r),n.appendChild(i),o.appendChild(n),preview.appendChild(o)},a.readAsDataURL(e)}),updateAllImages()}function updateFileInput(){const e=new DataTransfer;files.forEach(t=>e.items.add(t)),input.files=e.files,updateAllImages()}function updateAllImages(){allImages=[];if(existingGrid){const e=existingGrid.querySelectorAll('.image-card img');e.forEach(e=>allImages.push({src:e.src,type:'existing'}))}files.forEach((e,t)=>{const a=preview.querySelectorAll('img')[t];a&&allImages.push({src:a.src,type:'new',file:e})}),updateVariantSelectors()}if(existingGrid){new Sortable(existingGrid,{animation:150,handle:'.drag-handle',onEnd:()=>{updateImageOrder(),updateMainBadge()}});function updateImageOrder(){const e=Array.from(existingGrid.querySelectorAll('.image-card')).map(e=>e.dataset.imageId);document.getElementById('imageOrderInput').value=JSON.stringify(e)}function updateMainBadge(){const e=existingGrid.querySelectorAll('.image-card');e.forEach((e,t)=>{const a=e.querySelector('.badge.bg-warning');a&&a.remove(),0===t&&(a=document.createElement('span'),a.className='badge bg-warning text-dark position-absolute top-0 start-0 m-2',a.innerHTML='<i class="bi bi-star-fill"></i> Main',e.querySelector('.image-wrapper').appendChild(a))})}document.querySelectorAll('.set-main-btn').forEach(e=>{e.addEventListener('click',function(){const e=this.getAttribute('data-image-id'),t=document.querySelector(`[data-image-id="${e}"]`);t&&existingGrid&&(existingGrid.insertBefore(t,existingGrid.firstChild),updateImageOrder(),updateMainBadge())})}),document.querySelectorAll('.delete-image-btn').forEach(e=>{e.addEventListener('click',function(){const e=this.getAttribute('data-image-id');confirm('Delete this image?')&&deleteImage(e)})}),document.getElementById('deleteAllBtn')?.addEventListener('click',function(){if(confirm('Delete all images?')){const e=Array.from(document.querySelectorAll('.delete-image-btn')).map(e=>e.getAttribute('data-image-id'));e.forEach(e=>deleteImage(e))}});function deleteImage(e){fetch(`/admin/products/delete-image/${e}`,{method:'POST',headers:{'Content-Type':'application/json'}}).then(e=>e.json()).then(t=>{if(t.success){const t=document.querySelector(`[data-image-id="${e}"]`);t&&(t.style.opacity='0',setTimeout(()=>{t.remove(),updateImageOrder(),updateMainBadge(),updateAllImages()},300))}else alert('Failed to delete')}).catch(()=>alert('Failed to delete'))}}document.getElementById('addColorBtn').addEventListener('click',()=>addColorVariant());function addColorVariant(e=null){const t=e?e.id:`c${colorCounter++}`,a=document.createElement('div');a.className='variant-item';a.dataset.variantId=t;a.innerHTML=`<div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0">Color Variant</h6><button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button></div><div class="row g-2 mb-2"><div class="col-md-5"><input type="text" class="form-control color-name" placeholder="Color name" value="${e?e.name:''}"></div><div class="col-md-3"><input type="color" class="form-control color-code" value="${e?e.code:'#000000'}"></div><div class="col-md-4"><input type="number" class="form-control color-price" placeholder="Price adj." value="${e?e.price_adj:''}"></div></div><div class="image-selector" id="colorImg${t}"></div>`;document.getElementById('colorVariantList').appendChild(a);a.querySelector('.remove-variant').onclick=()=>a.remove();updateVariantSelectors()}document.getElementById('addSizeBtn').addEventListener('click',()=>addSizeVariant());function addSizeVariant(e=null){const t=e?e.id:`s${sizeCounter++}`,a=document.createElement('div');a.className='variant-item';a.dataset.variantId=t;a.innerHTML=`<div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0">Size Variant</h6><button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button></div><div class="row g-2 mb-2"><div class="col-md-6"><input type="text" class="form-control size-name" placeholder="Size (S, M, L, etc.)" value="${e?e.name:''}"></div><div class="col-md-6"><input type="number" class="form-control size-price" placeholder="Price adjustment" value="${e?e.price_adj:''}"></div></div><div class="image-selector" id="sizeImg${t}"></div>`;document.getElementById('sizeVariantList').appendChild(a);a.querySelector('.remove-variant').onclick=()=>a.remove();updateVariantSelectors()}function updateVariantSelectors(){document.querySelectorAll('.image-selector').forEach(e=>{e.innerHTML='<p class="small text-muted mb-2">Select images for this variant:</p><div class="d-flex flex-wrap gap-2"></div>';const t=e.querySelector('.d-flex');allImages.forEach((e,a)=>{const o=document.createElement('div');o.className='img-checkbox';o.innerHTML=`<img src="${e.src}" alt="Image ${a+1}">`;o.onclick=()=>o.classList.toggle('selected');t.appendChild(o)})})}document.getElementById('productForm').addEventListener('submit',function(e){const t=[];document.querySelectorAll('#colorVariantList .variant-item').forEach(e=>{const a=e.dataset.variantId,o={id:a,name:e.querySelector('.color-name').value,code:e.querySelector('.color-code').value,price_adj:e.querySelector('.color-price').value||0,images:[]};e.querySelectorAll('.img-checkbox.selected').forEach((e,t)=>{o.images.push(t)});t.push(o)});const a=[];document.querySelectorAll('#sizeVariantList .variant-item').forEach(e=>{const t=e.dataset.variantId,o={id:t,name:e.querySelector('.size-name').value,price_adj:e.querySelector('.size-price').value||0,images:[]};e.querySelectorAll('.img-checkbox.selected').forEach((e,t)=>{o.images.push(t)});a.push(o)});document.getElementById('colorVariantsData').value=JSON.stringify(t);document.getElementById('sizeVariantsData').value=JSON.stringify(a)});
+</script>
 {% endblock %}

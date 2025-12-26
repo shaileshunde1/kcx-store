@@ -1,96 +1,507 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <title>{% block title %}KCX Crochet Store{% endblock %}</title>
-
-    <!-- Bootstrap 5 CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    >
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-      body { background-color: #fff8f4; }
-      .hero-section { padding: 4rem 0 3rem 0; }
-      .navbar-brand { font-weight: 600; letter-spacing: 0.06em; }
-      .product-card img { object-fit: cover; height: 220px; }
-      .btn-primary-soft {
-        background-color: #f4d3c4;
-        border-color: #f4d3c4;
-        color: #5b4336;
+      body { 
+        background-color: #FFF8F0; 
+        font-family: 'Poppins', sans-serif;
+        padding-top: 140px;
+      }
+      
+      /* ==================== ANNOUNCEMENT BAR ==================== */
+      .announcement-bar {
+        background: linear-gradient(135deg, #8B6F47 0%, #A67C52 100%);
+        color: #FFF8F0;
+        padding: 10px 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .announcement-bar i {
+        margin-right: 8px;
+        color: #FFF8F0;
+      }
+
+      /* ==================== STICKY NAVBAR ==================== */
+      .navbar {
+        position: fixed;
+        top: 40px;
+        left: 0;
+        right: 0;
+        z-index: 1040;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #6B4423 0%, #8B6F47 100%) !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      }
+
+      .navbar.scrolled {
+        top: 0;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+      }
+
+      .navbar.scrolled .announcement-bar {
+        display: none;
+      }
+
+      /* ==================== LOGO WITH SINGLE FLOWER ==================== */
+      .navbar-brand {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 700;
+        font-size: 1.8rem;
+        letter-spacing: 0.06em;
+        color: #FFF8F0 !important;
+        transition: all 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+        text-decoration: none;
+      }
+
+      /* Single flower replacing 'o' - FIXED VERSION */
+      .navbar-brand .flower-o {
+        display: inline-block;
+        position: relative;
+        font-size: 1.0em;
+        line-height: 1;
+        vertical-align: middle;
+        margin: 0 -0.05em;
+      }
+
+      .navbar.scrolled .navbar-brand {
+        font-size: 0.9rem;
+      }
+
+      /* Nav links */
+      .navbar .nav-link {
+        color: #FFF8F0 !important;
+        font-weight: 500;
+        transition: all 0.3s;
+      }
+
+      .navbar .nav-link:hover {
+        color: #FFE4B5 !important;
+        transform: translateY(-2px);
+      }
+
+      .navbar .container {
+        position: relative;
+      }
+
+      .nav-left {
+        margin-right: auto;
+      }
+
+      .nav-right {
+        margin-left: auto;
+      }
+
+      /* Category Dropdown */
+      .category-dropdown .dropdown-menu {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        border: none;
+        padding: 0.5rem;
+        min-width: 200px;
+        background-color: #FFF8F0;
+      }
+
+      .category-dropdown .dropdown-item {
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        transition: all 0.2s;
+        font-weight: 500;
+        color: #6B4423;
+      }
+
+      .category-dropdown .dropdown-item:hover {
+        background: linear-gradient(135deg, #A67C52 0%, #8B6F47 100%);
+        color: #FFF8F0;
+        transform: translateX(5px);
+      }
+
+      .category-dropdown .dropdown-item i {
+        margin-right: 8px;
+        width: 20px;
+      }
+
+      /* Footer */
+      footer {
+        background: linear-gradient(135deg, #2d3436 0%, #1e272e 100%);
+        color: #dfe6e9;
+        margin-top: 5rem;
+      }
+
+      .footer-section {
+        padding: 3rem 0 1rem 0;
+      }
+
+      .footer-title {
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-bottom: 0.5rem;
+      }
+
+      .footer-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 40px;
+        height: 2px;
+        background: linear-gradient(135deg, #A67C52 0%, #8B6F47 100%);
+      }
+
+      .footer-link {
+        color: #b2bec3;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s;
+      }
+
+      .footer-link:hover {
+        color: white;
+        padding-left: 5px;
+      }
+
+      .contact-item {
+        display: flex;
+        align-items: start;
+        margin-bottom: 1rem;
+        color: #b2bec3;
+      }
+
+      .contact-item i {
+        margin-right: 12px;
+        margin-top: 4px;
+        color: #A67C52;
+        font-size: 1.2rem;
+      }
+
+      .social-links a {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        line-height: 40px;
+        text-align: center;
+        background: #34495e;
+        color: white;
+        border-radius: 50%;
+        margin-right: 10px;
+        transition: all 0.3s;
+      }
+
+      .social-links a:hover {
+        background: linear-gradient(135deg, #A67C52 0%, #8B6F47 100%);
+        transform: translateY(-3px);
+      }
+
+      .footer-bottom {
+        border-top: 1px solid #34495e;
+        padding: 1.5rem 0;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.9rem;
+      }
+
+      .policy-accordion .accordion-item {
+        background-color: transparent;
+        border: 1px solid #34495e;
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+      }
+
+      .policy-accordion .accordion-button {
+        background-color: transparent;
+        color: white;
+        font-weight: 500;
+        border-radius: 8px;
+      }
+
+      .policy-accordion .accordion-button:not(.collapsed) {
+        background-color: rgba(166, 124, 82, 0.1);
+        color: white;
+      }
+
+      .policy-accordion .accordion-body {
+        background-color: rgba(0,0,0,0.2);
+        color: #b2bec3;
+        font-size: 0.9rem;
+        line-height: 1.8;
+      }
+
+      @media (max-width: 991px) {
+        .navbar-brand {
+          position: static;
+          transform: none;
+          font-size: 1.4rem;
+        }
+
+        .navbar.scrolled .navbar-brand {
+          font-size: 1.2rem;
+        }
+
+        body {
+          padding-top: 120px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .announcement-bar {
+          font-size: 0.8rem;
+          padding: 8px 0;
+        }
+
+        .footer-section {
+          padding: 2rem 0 1rem 0;
+        }
+
+        .footer-title {
+          font-size: 1rem;
+        }
       }
     </style>
   </head>
 
   <body>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-  <div class="container">
-
-    <!-- Brand -->
-    <a class="navbar-brand" href="/">KCX Crochet</a>
-
-    <!-- Right side menu -->
-    <div class="ms-auto d-flex align-items-center">
-
-      <!-- Shop link -->
-      <a class="nav-link me-3" href="/shop">Shop</a>
-
-      <!-- ADMIN DROPDOWN -->
-      {% if session.get('is_admin') %}
-      <div class="nav-item dropdown me-3">
-        <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button"
-           data-bs-toggle="dropdown" aria-expanded="false">
-          Admin
-        </a>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="{{ url_for('admin_index') }}">Dashboard</a></li>
-          <li><a class="dropdown-item" href="{{ url_for('admin_orders') }}">Orders</a></li>
-          <li><a class="dropdown-item" href="{{ url_for('admin_products') }}">Products</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item text-danger" href="{{ url_for('admin_logout') }}">Logout</a></li>
-        </ul>
+    <!-- Announcement Bar -->
+    <div class="announcement-bar text-center" id="announcementBar">
+      <div class="container">
+        <i class="bi bi-truck"></i>
+        <strong>FREE SHIPPING</strong> on all orders over ₹1,000 across India!
       </div>
-      {% else %}
-      <a class="nav-link me-3" href="{{ url_for('admin_login') }}">Admin</a>
-      {% endif %}
-
-      <!-- CART BUTTON -->
-      <a class="nav-link"
-         data-bs-toggle="offcanvas"
-         href="#cartOffcanvas"
-         role="button"
-         aria-controls="cartOffcanvas">
-         Cart ({{ cart_count_global or 0 }})
-      </a>
-
     </div>
 
-  </div>
-</nav>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark" id="mainNavbar">
+      <div class="container">
 
+        <!-- Left side navigation -->
+        <div class="nav-left d-flex align-items-center">
+          <a class="nav-link" href="/shop">Shop</a>
+          
+          <!-- Categories Dropdown -->
+          <div class="nav-item dropdown category-dropdown ms-3">
+            <a class="nav-link dropdown-toggle" href="#" id="categoriesMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              Categories
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/shop"><i class="bi bi-grid-3x3-gap"></i> All Products</a></li>
+              <li><hr class="dropdown-divider"></li>
+              {% for category in categories_global %}
+              <li>
+                <a class="dropdown-item" href="/shop?category={{ category }}">
+                  <i class="bi bi-tag"></i> {{ category }}
+                </a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
+        <!-- Centered Brand with SINGLE Flower (FIXED) -->
+        <a class="navbar-brand" href="/">
+          KCX Cr<span class="flower-o">🌸</span>chet
+        </a>
+
+        <!-- Right side navigation -->
+        <div class="nav-right d-flex align-items-center">
+
+          <!-- ADMIN DROPDOWN -->
+          {% if session.get('is_admin') %}
+          <div class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
+              Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('admin_index') }}">Dashboard</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('admin_orders') }}">Orders</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('admin_products') }}">Products</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('admin_logout') }}">Logout</a></li>
+            </ul>
+          </div>
+          {% else %}
+          <a class="nav-link me-3" href="{{ url_for('admin_login') }}">Admin</a>
+          {% endif %}
+
+          <!-- CART BUTTON -->
+          <a class="nav-link"
+             data-bs-toggle="offcanvas"
+             href="#cartOffcanvas"
+             role="button"
+             aria-controls="cartOffcanvas">
+             <i class="bi bi-bag"></i> Cart ({{ cart_count_global or 0 }})
+          </a>
+
+        </div>
+
+      </div>
+    </nav>
 
     <main>
       {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="py-4 mt-5 border-top">
-      <div class="container text-center small text-muted">
-        &copy; 2025 KCX Crochet Store.
+    <footer>
+      <div class="footer-section">
+        <div class="container">
+          <div class="row">
+            
+            <!-- About Section -->
+            <div class="col-md-4 mb-4">
+              <h5 class="footer-title">About KCX Crochet</h5>
+              <p style="color: #b2bec3; font-size: 0.9rem; line-height: 1.8;">
+                Handcrafted crochet items made with love and care. Each piece is unique and created with premium quality materials.
+              </p>
+              <div class="social-links mt-3">
+                <a href="https://www.instagram.com/kcx.crochett?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" title="Instagram" target="_blank">
+                  <i class="bi bi-instagram"></i>
+                </a>
+              </div>
+            </div>
+
+            <!-- Contact Us -->
+            <div class="col-md-4 mb-4">
+              <h5 class="footer-title">Contact Us</h5>
+              <div class="contact-item">
+                <i class="bi bi-envelope-fill"></i>
+                <div>
+                  <strong>Email:</strong><br>
+                  <a href="mailto:shaileshalternate@gmail.com" class="footer-link" style="display: inline;">shaileshalternate@gmail.com</a>
+                </div>
+              </div>
+              <div class="contact-item">
+                <i class="bi bi-phone-fill"></i>
+                <div>
+                  <strong>Phone:</strong><br>
+                  <a href="tel:+918433898954" class="footer-link" style="display: inline;">+91 8433898954</a>
+                </div>
+              </div>
+              <div class="contact-item">
+                <i class="bi bi-whatsapp"></i>
+                <div>
+                  <strong>WhatsApp:</strong><br>
+                  <a href="https://wa.me/8433898954" class="footer-link" style="display: inline;" target="_blank">+91 8433898954</a>
+                </div>
+              </div>
+              <div class="contact-item">
+                <i class="bi bi-geo-alt-fill"></i>
+                <div>
+                  <strong>Location:</strong><br>
+                  Mumbai, Maharashtra, India
+                </div>
+              </div>
+            </div>
+
+            <!-- Policies -->
+            <div class="col-md-4 mb-4">
+              <h5 class="footer-title">Policies</h5>
+              
+              <div class="accordion policy-accordion" id="policyAccordion">
+                
+                <!-- Shipping Policy -->
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#shippingPolicy">
+                      <i class="bi bi-truck me-2"></i> Shipping Policy
+                    </button>
+                  </h2>
+                  <div id="shippingPolicy" class="accordion-collapse collapse" data-bs-parent="#policyAccordion">
+                    <div class="accordion-body">
+                      <p><strong>Delivery Time:</strong> 5-7 business days across India</p>
+                      <p><strong>Free Shipping:</strong> On orders above ₹1,000</p>
+                      <p><strong>Shipping Charges:</strong> ₹100 for orders below ₹1,000</p>
+                      <p><strong>Tracking:</strong> Tracking details will be sent via email/SMS once your order is shipped.</p>
+                      <p>We ship Monday to Saturday. Orders placed on Sunday will be processed on Monday.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Returns Policy -->
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#returnsPolicy">
+                      <i class="bi bi-arrow-repeat me-2"></i> Returns Policy
+                    </button>
+                  </h2>
+                  <div id="returnsPolicy" class="accordion-collapse collapse" data-bs-parent="#policyAccordion">
+                    <div class="accordion-body">
+                      <p><strong>Note:</strong> Custom-made items are non-returnable.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Privacy Policy -->
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#privacyPolicy">
+                      <i class="bi bi-shield-check me-2"></i> Privacy Policy
+                    </button>
+                  </h2>
+                  <div id="privacyPolicy" class="accordion-collapse collapse" data-bs-parent="#policyAccordion">
+                    <div class="accordion-body">
+                      <p>We respect your privacy and are committed to protecting your personal information.</p>
+                      <p><strong>Information We Collect:</strong></p>
+                      <ul>
+                        <li>Name, email, phone number</li>
+                        <li>Shipping address</li>
+                        <li>Payment information (securely processed)</li>
+                      </ul>
+                      <p><strong>How We Use It:</strong></p>
+                      <ul>
+                        <li>Process and deliver your orders</li>
+                        <li>Send order updates and notifications</li>
+                        <li>Improve our products and services</li>
+                      </ul>
+                      <p>We never share your information with third parties without your consent.</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Bottom -->
+      <div class="footer-bottom">
+        <div class="container">
+          <p class="mb-0">&copy; 2025 KCX Crochet Store. Handmade with <i class="bi bi-heart-fill text-danger"></i> in India.</p>
+        </div>
       </div>
     </footer>
 
     <!-- Cart Offcanvas -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas">
       <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="cartOffcanvasLabel">Your Cart</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <h5 class="offcanvas-title">Your Cart</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
       </div>
       <div class="offcanvas-body">
         {% if cart_items_global %}
@@ -106,7 +517,25 @@
               </div>
               <div class="flex-grow-1">
                 <h6 class="mb-1">{{ item.product.name }}</h6>
-                <p class="small text-muted mb-1">₹{{ item.product.price }}</p>
+                
+                {% if item.size %}
+                  <p class="small text-muted mb-1">Size: {{ item.size }}</p>
+                {% endif %}
+                {% if item.color %}
+                  <p class="small text-muted mb-1">Color: {{ item.color }}</p>
+                {% endif %}
+                {% if item.wrap %}
+                  <p class="small text-success mb-1"><i class="bi bi-gift"></i> {{ item.wrap }}</p>
+                {% endif %}
+                
+                {% if item.product.sale_price %}
+                  <p class="small mb-1">
+                    <span class="text-decoration-line-through text-muted">₹{{ item.product.price }}</span>
+                    <span class="text-danger fw-bold ms-2">₹{{ item.product.sale_price }}</span>
+                  </p>
+                {% else %}
+                  <p class="small text-muted mb-1">₹{{ item.product.price }}</p>
+                {% endif %}
 
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="d-inline-flex align-items-center">
@@ -131,8 +560,8 @@
             <strong>₹{{ cart_total_global }}</strong>
           </div>
           <a href="{{ url_for('checkout') }}" class="btn btn-dark w-100 mb-2">
-  Checkout
-</a>
+            Checkout
+          </a>
 
           <a href="{{ url_for('shop') }}" class="btn btn-outline-secondary w-100">Continue shopping</a>
         {% else %}
@@ -142,24 +571,32 @@
       </div>
     </div>
 
-    <!-- Bootstrap JS bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        {% if cart_open_global %}
+          var offcanvasEl = document.getElementById('cartOffcanvas');
+          if (offcanvasEl) {
+            var bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl);
+            bsOffcanvas.show();
+          }
+        {% endif %}
 
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    {% if cart_open_global %}
-      var offcanvasEl = document.getElementById('cartOffcanvas');
-      if (offcanvasEl) {
-        var bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl);
-        bsOffcanvas.show();
-        // ❌ no auto-close, user can close with the X
-      }
-    {% endif %}
-  });
-</script>
-
+        const navbar = document.getElementById('mainNavbar');
+        const announcement = document.getElementById('announcementBar');
+        
+        window.addEventListener('scroll', function() {
+          if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+            announcement.style.display = 'none';
+          } else {
+            navbar.classList.remove('scrolled');
+            announcement.style.display = 'block';
+          }
+        });
+      });
+    </script>
 
   </body>
 </html>

@@ -6,42 +6,505 @@
 
 <section class="py-5">
   <div class="container">
-    <div class="row g-4">
-      <!-- Image -->
-      <div class="col-md-5">
-        <div class="card border-0 shadow-sm">
-          <img
-            src="{{ url_for('static', filename=product.image_url) }}"
-            class="card-img-top"
-            alt="{{ product.name }}"
-          >
+    <a href="{{ url_for('shop') }}" class="btn btn-sm btn-outline-secondary mb-4">
+      <i class="bi bi-arrow-left"></i> Back to Shop
+    </a>
+
+    <div class="row">
+      <!-- Product Images -->
+      <div class="col-md-6 mb-4">
+        <div class="position-relative">
+          <!-- Main Image -->
+          <div class="product-main-image mb-3 shadow-sm rounded">
+            {% if product.image_url %}
+              <img 
+                id="mainImage"
+                src="{{ url_for('static', filename=product.image_url) }}" 
+                class="img-fluid rounded" 
+                alt="{{ product.name }}"
+                style="width: 100%; height: auto; max-height: 500px; object-fit: cover;"
+              >
+            {% else %}
+              <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 400px;">
+                <span class="text-muted">No image available</span>
+              </div>
+            {% endif %}
+            
+            <!-- Badges -->
+            <div class="position-absolute top-0 start-0 m-3 d-flex flex-column gap-2">
+              {% if product.is_bestseller %}
+                <span class="badge bg-danger" style="font-size: 0.9rem; padding: 0.5rem 0.8rem;">Bestseller</span>
+              {% endif %}
+              {% if product.is_new_launch %}
+                <span class="badge" style="background-color: #4CAF50; font-size: 0.9rem; padding: 0.5rem 0.8rem;">New Launch</span>
+              {% endif %}
+            </div>
+            
+            {% if product.sale_price %}
+              <span class="badge position-absolute top-0 end-0 m-3" style="background-color: #FF6B6B; font-size: 1rem; padding: 0.6rem 1rem;">SALE!</span>
+            {% endif %}
+          </div>
+
+          <!-- Thumbnail Gallery -->
+          <div id="thumbnailGallery" class="thumbnail-gallery d-flex gap-2 overflow-auto">
+            {% if product.images and product.images|length > 1 %}
+              {% for img in product.images %}
+                <img 
+                  src="{{ url_for('static', filename=img.image_url) }}" 
+                  class="thumbnail-img rounded shadow-sm {% if loop.index == 1 %}active{% endif %}" 
+                  alt="Product image"
+                  data-image-url="{{ url_for('static', filename=img.image_url) }}"
+                  onclick="changeMainImage('{{ url_for('static', filename=img.image_url) }}', this)"
+                >
+              {% endfor %}
+            {% endif %}
+          </div>
         </div>
       </div>
 
-      <!-- Details -->
-      <div class="col-md-7">
-        <p class="text-muted mb-1">KCX Crochet · Handmade</p>
-        <h1 class="h3 fw-bold mb-2">{{ product.name }}</h1>
+      <!-- Product Details -->
+      <div class="col-md-6">
+        <h1 class="fw-bold mb-3">{{ product.name }}</h1>
 
-        <p class="fs-4 fw-semibold mb-3">₹{{ product.price }}</p>
+        <!-- Price Display -->
+        <div class="mb-4">
+          {% if product.sale_price %}
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <h3 class="mb-0 fw-bold" id="displayPrice" style="color: #FF6B6B;">₹{{ product.sale_price }}</h3>
+              <h4 class="mb-0 text-decoration-line-through text-muted" id="originalPrice">₹{{ product.price }}</h4>
+            </div>
+            <div class="alert alert-success py-2 px-3 d-inline-block" style="border-radius: 8px;">
+              <i class="bi bi-tag-fill me-2"></i>
+              <strong>You save ₹{{ product.price - product.sale_price }}</strong> 
+              ({{ ((product.price - product.sale_price) / product.price * 100) | round | int }}% off)
+            </div>
+          {% else %}
+            <h3 class="mb-3 fw-bold" id="displayPrice">₹{{ product.price }}</h3>
+          {% endif %}
+        </div>
 
-        <p class="text-muted mb-4">
-          {{ product.description }}
-        </p>
+        <!-- COLOR VARIANTS -->
+        <div id="colorVariantsSection" class="mb-4" style="display: none;">
+          <label class="form-label fw-semibold mb-3">
+            <i class="bi bi-palette"></i> Select Color
+          </label>
+          <div id="colorOptions" class="d-flex flex-wrap gap-3"></div>
+        </div>
 
-       <div class="d-flex gap-2 mb-4">
-  <a href="/add/{{ product.id }}" class="btn btn-dark btn-lg px-4">
-    Add to Cart
-  </a>
-  <a href="/shop" class="btn btn-outline-secondary btn-lg px-4">Back to Shop</a>
-</div>
+        <!-- SIZE VARIANTS -->
+        <div id="sizeVariantsSection" class="mb-4" style="display: none;">
+          <label class="form-label fw-semibold mb-3">
+            <i class="bi bi-rulers"></i> Select Size
+          </label>
+          <div id="sizeOptions" class="d-flex flex-wrap gap-2"></div>
+        </div>
 
-        {% if product.is_bestseller %}
-          <span class="badge bg-danger">Bestseller</span>
+        <!-- Description -->
+        {% if product.description %}
+        <div class="mb-4">
+          <h5 class="fw-semibold mb-2">Description</h5>
+          <p class="text-muted" style="line-height: 1.8;">{{ product.description }}</p>
+        </div>
         {% endif %}
+
+        <!-- Product Info -->
+        <div class="card border-0 bg-light mb-4" style="border-radius: 12px;">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Product Information</h6>
+            <ul class="list-unstyled mb-0">
+              <li class="mb-2">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                Handmade with love
+              </li>
+              <li class="mb-2">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                High-quality materials
+              </li>
+              <li class="mb-2">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                Made in India
+              </li>
+              {% if product.category %}
+              <li class="mb-2">
+                <i class="bi bi-tag-fill text-primary me-2"></i>
+                Category: <strong>{{ product.category }}</strong>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+
+        <!-- Shipping Info -->
+        <div class="alert alert-info mb-4" style="border-radius: 12px;">
+          <div class="d-flex align-items-start">
+            <i class="bi bi-truck fs-4 me-3"></i>
+            <div>
+              <h6 class="fw-semibold mb-1">Free Shipping</h6>
+              <p class="mb-0 small">On orders above ₹1,000 | 5-7 business days delivery</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add to Cart Button -->
+        <div class="d-grid gap-2">
+          <a href="/add/{{ product.id }}" class="btn btn-dark btn-lg" style="border-radius: 10px;">
+            <i class="bi bi-bag-plus me-2"></i>Add to Cart
+          </a>
+          <a href="{{ url_for('shop') }}" class="btn btn-outline-secondary btn-lg" style="border-radius: 10px;">
+            Continue Shopping
+          </a>
+        </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- Suggested Products Section -->
+{% if suggested_products and suggested_products|length > 0 %}
+<section class="py-5" style="background-color: #f8f9fa;">
+  <div class="container">
+    <div class="mb-4">
+      <h3 class="fw-bold">You May Also Like</h3>
+      <p class="text-muted">More handcrafted items just for you</p>
+    </div>
+
+    <div class="row g-4">
+      {% for p in suggested_products %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; transition: transform 0.2s;">
+          <a href="{{ url_for('product_detail', product_id=p.id) }}" class="text-decoration-none">
+            <div class="position-relative">
+              <img src="{{ url_for('static', filename=p.image_url) }}" class="card-img-top" alt="{{ p.name }}" style="height: 200px; object-fit: cover; border-radius: 12px 12px 0 0;">
+              {% if p.sale_price %}
+                <span class="badge bg-danger position-absolute top-0 end-0 m-2">SALE</span>
+              {% endif %}
+            </div>
+            <div class="card-body">
+              <h6 class="card-title fw-bold text-dark">{{ p.name }}</h6>
+              {% if p.sale_price %}
+                <div>
+                  <span class="fw-bold text-danger">₹{{ p.sale_price }}</span>
+                  <span class="text-muted text-decoration-line-through small ms-2">₹{{ p.price }}</span>
+                </div>
+              {% else %}
+                <p class="fw-bold mb-0 text-dark">₹{{ p.price }}</p>
+              {% endif %}
+            </div>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<style>
+  .product-main-image {
+    overflow: hidden;
+    border-radius: 15px;
+  }
+
+  .thumbnail-gallery::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .thumbnail-gallery::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  .thumbnail-gallery::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+  }
+
+  .thumbnail-img {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 3px solid transparent;
+    opacity: 0.7;
+  }
+
+  .thumbnail-img:hover,
+  .thumbnail-img.active {
+    border-color: #A67C52;
+    opacity: 1;
+  }
+
+  /* Color Variant Styles */
+  .color-option {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid #dee2e6;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .color-option:hover {
+    transform: scale(1.1);
+  }
+
+  .color-option.selected {
+    border-color: #A67C52;
+    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.2);
+  }
+
+  .color-option.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-shadow: 0 0 3px rgba(0,0,0,0.5);
+  }
+
+  .color-label {
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 0.25rem;
+    color: #666;
+  }
+
+  /* Size Variant Styles */
+  .size-option {
+    min-width: 60px;
+    padding: 0.6rem 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    font-weight: 600;
+    background: white;
+  }
+
+  .size-option:hover {
+    border-color: #A67C52;
+    transform: translateY(-2px);
+  }
+
+  .size-option.selected {
+    border-color: #A67C52;
+    background: #A67C52;
+    color: white;
+  }
+
+  .badge {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+</style>
+
+<script>
+  // Store product data and images
+  const productData = {
+    basePrice: {{ product.sale_price if product.sale_price else product.price }},
+    originalPrice: {{ product.price }},
+    hasSale: {{ 'true' if product.sale_price else 'false' }},
+    allImages: [
+      {% if product.images %}
+        {% for img in product.images %}
+          "{{ url_for('static', filename=img.image_url) }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+      {% elif product.image_url %}
+        "{{ url_for('static', filename=product.image_url) }}"
+      {% endif %}
+    ],
+    colorVariants: [],
+    sizeVariants: []
+  };
+
+  let selectedColor = null;
+  let selectedSize = null;
+  let currentPriceAdjustment = 0;
+
+  // Initialize variants (this would come from your backend in production)
+  // For now, we'll check if variants exist in the product data
+  // You'll need to pass this from Flask: product.color_variants, product.size_variants
+
+  function initializeVariants() {
+    // You would populate these from your database
+    // Example structure:
+    // productData.colorVariants = [
+    //   { id: 'red', name: 'Red', code: '#FF0000', priceAdj: 0, images: [0, 1] },
+    //   { id: 'blue', name: 'Blue', code: '#0000FF', priceAdj: 50, images: [2, 3] }
+    // ];
+    
+    if (productData.colorVariants.length > 0) {
+      document.getElementById('colorVariantsSection').style.display = 'block';
+      renderColorOptions();
+    }
+    
+    if (productData.sizeVariants.length > 0) {
+      document.getElementById('sizeVariantsSection').style.display = 'block';
+      renderSizeOptions();
+    }
+  }
+
+  function renderColorOptions() {
+    const container = document.getElementById('colorOptions');
+    container.innerHTML = '';
+    
+    productData.colorVariants.forEach((color, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'd-flex flex-column align-items-center';
+      
+      const colorDiv = document.createElement('div');
+      colorDiv.className = 'color-option';
+      colorDiv.style.backgroundColor = color.code;
+      colorDiv.dataset.colorId = color.id;
+      colorDiv.onclick = () => selectColor(color);
+      
+      if (index === 0) {
+        colorDiv.classList.add('selected');
+        selectColor(color, false);
+      }
+      
+      const label = document.createElement('div');
+      label.className = 'color-label';
+      label.textContent = color.name;
+      
+      wrapper.appendChild(colorDiv);
+      wrapper.appendChild(label);
+      container.appendChild(wrapper);
+    });
+  }
+
+  function renderSizeOptions() {
+    const container = document.getElementById('sizeOptions');
+    container.innerHTML = '';
+    
+    productData.sizeVariants.forEach((size, index) => {
+      const sizeDiv = document.createElement('div');
+      sizeDiv.className = 'size-option';
+      sizeDiv.dataset.sizeId = size.id;
+      sizeDiv.textContent = size.name;
+      sizeDiv.onclick = () => selectSize(size);
+      
+      if (index === 0) {
+        sizeDiv.classList.add('selected');
+        selectSize(size, false);
+      }
+      
+      container.appendChild(sizeDiv);
+    });
+  }
+
+  function selectColor(color, updatePrice = true) {
+    selectedColor = color;
+    
+    // Update UI
+    document.querySelectorAll('.color-option').forEach(el => {
+      el.classList.remove('selected');
+    });
+    document.querySelector(`[data-color-id="${color.id}"]`).classList.add('selected');
+    
+    // Update images if color has specific images
+    if (color.images && color.images.length > 0) {
+      updateThumbnailGallery(color.images);
+      const firstImage = productData.allImages[color.images[0]];
+      if (firstImage) {
+        changeMainImage(firstImage);
+      }
+    }
+    
+    if (updatePrice) {
+      updatePrice();
+    }
+  }
+
+  function selectSize(size, updatePriceFlag = true) {
+    selectedSize = size;
+    
+    // Update UI
+    document.querySelectorAll('.size-option').forEach(el => {
+      el.classList.remove('selected');
+    });
+    document.querySelector(`[data-size-id="${size.id}"]`).classList.add('selected');
+    
+    // Update images if size has specific images
+    if (size.images && size.images.length > 0) {
+      updateThumbnailGallery(size.images);
+      const firstImage = productData.allImages[size.images[0]];
+      if (firstImage) {
+        changeMainImage(firstImage);
+      }
+    }
+    
+    if (updatePriceFlag) {
+      updatePrice();
+    }
+  }
+
+  function updateThumbnailGallery(imageIndices) {
+    const gallery = document.getElementById('thumbnailGallery');
+    gallery.innerHTML = '';
+    
+    imageIndices.forEach((imgIndex, index) => {
+      const imgUrl = productData.allImages[imgIndex];
+      if (imgUrl) {
+        const img = document.createElement('img');
+        img.src = imgUrl;
+        img.className = 'thumbnail-img rounded shadow-sm' + (index === 0 ? ' active' : '');
+        img.alt = 'Product image';
+        img.onclick = () => changeMainImage(imgUrl, img);
+        gallery.appendChild(img);
+      }
+    });
+  }
+
+  function updatePrice() {
+    let adjustment = 0;
+    
+    if (selectedColor && selectedColor.priceAdj) {
+      adjustment += parseFloat(selectedColor.priceAdj);
+    }
+    
+    if (selectedSize && selectedSize.priceAdj) {
+      adjustment += parseFloat(selectedSize.priceAdj);
+    }
+    
+    const newPrice = productData.basePrice + adjustment;
+    document.getElementById('displayPrice').textContent = '₹' + newPrice;
+    
+    if (productData.hasSale && adjustment !== 0) {
+      const newOriginal = productData.originalPrice + adjustment;
+      document.getElementById('originalPrice').textContent = '₹' + newOriginal;
+    }
+  }
+
+  function changeMainImage(imageUrl, thumbnailElement) {
+    const mainImage = document.getElementById('mainImage');
+    mainImage.style.opacity = '0';
+    
+    setTimeout(() => {
+      mainImage.src = imageUrl;
+      mainImage.style.opacity = '1';
+    }, 150);
+    
+    // Update active thumbnail
+    if (thumbnailElement) {
+      document.querySelectorAll('.thumbnail-img').forEach(img => {
+        img.classList.remove('active');
+      });
+      thumbnailElement.classList.add('active');
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeVariants();
+  });
+</script>
 
 {% endblock %}
