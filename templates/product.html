@@ -16,7 +16,15 @@
         <div class="position-relative">
           <!-- Main Image -->
           <div class="product-main-image mb-3 shadow-sm rounded">
-            {% if product.image_url %}
+            {% if product.images and product.images|length > 0 %}
+              <img 
+                id="mainImage"
+                src="{{ url_for('static', filename=product.images[0].image_url) }}" 
+                class="img-fluid rounded" 
+                alt="{{ product.name }}"
+                style="width: 100%; height: auto; max-height: 500px; object-fit: cover;"
+              >
+            {% elif product.image_url %}
               <img 
                 id="mainImage"
                 src="{{ url_for('static', filename=product.image_url) }}" 
@@ -140,7 +148,7 @@
             <i class="bi bi-truck fs-4 me-3"></i>
             <div>
               <h6 class="fw-semibold mb-1">Free Shipping</h6>
-              <p class="mb-0 small">On orders above ₹1,000 | 5-7 business days delivery</p>
+              <p class="mb-0 small">On orders above ₹1,000 | 7-14 business days delivery</p>
             </div>
           </div>
         </div>
@@ -159,7 +167,7 @@
   </div>
 </section>
 
-<!-- Suggested Products Section -->
+<!-- Suggested Products -->
 {% if suggested_products and suggested_products|length > 0 %}
 <section class="py-5" style="background-color: #f8f9fa;">
   <div class="container">
@@ -174,7 +182,11 @@
         <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; transition: transform 0.2s;">
           <a href="{{ url_for('product_detail', product_id=p.id) }}" class="text-decoration-none">
             <div class="position-relative">
-              <img src="{{ url_for('static', filename=p.image_url) }}" class="card-img-top" alt="{{ p.name }}" style="height: 200px; object-fit: cover; border-radius: 12px 12px 0 0;">
+              {% if p.images and p.images|length > 0 %}
+                <img src="{{ url_for('static', filename=p.images[0].image_url) }}" class="card-img-top" alt="{{ p.name }}" style="height: 200px; object-fit: cover; border-radius: 12px 12px 0 0;">
+              {% elif p.image_url %}
+                <img src="{{ url_for('static', filename=p.image_url) }}" class="card-img-top" alt="{{ p.name }}" style="height: 200px; object-fit: cover; border-radius: 12px 12px 0 0;">
+              {% endif %}
               {% if p.sale_price %}
                 <span class="badge bg-danger position-absolute top-0 end-0 m-2">SALE</span>
               {% endif %}
@@ -200,311 +212,219 @@
 {% endif %}
 
 <style>
-  .product-main-image {
-    overflow: hidden;
-    border-radius: 15px;
-  }
-
-  .thumbnail-gallery::-webkit-scrollbar {
-    height: 8px;
-  }
-
-  .thumbnail-gallery::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-
-  .thumbnail-gallery::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 10px;
-  }
-
-  .thumbnail-img {
-    flex-shrink: 0;
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 3px solid transparent;
-    opacity: 0.7;
-  }
-
-  .thumbnail-img:hover,
-  .thumbnail-img.active {
-    border-color: #A67C52;
-    opacity: 1;
-  }
-
-  /* Color Variant Styles */
-  .color-option {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 3px solid #dee2e6;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-  }
-
-  .color-option:hover {
-    transform: scale(1.1);
-  }
-
-  .color-option.selected {
-    border-color: #A67C52;
-    box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.2);
-  }
-
-  .color-option.selected::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
-    text-shadow: 0 0 3px rgba(0,0,0,0.5);
-  }
-
-  .color-label {
-    font-size: 0.75rem;
-    text-align: center;
-    margin-top: 0.25rem;
-    color: #666;
-  }
-
-  /* Size Variant Styles */
-  .size-option {
-    min-width: 60px;
-    padding: 0.6rem 1rem;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-    font-weight: 600;
-    background: white;
-  }
-
-  .size-option:hover {
-    border-color: #A67C52;
-    transform: translateY(-2px);
-  }
-
-  .size-option.selected {
-    border-color: #A67C52;
-    background: #A67C52;
-    color: white;
-  }
-
-  .badge {
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
+  .product-main-image {overflow: hidden;border-radius: 15px;}
+  .thumbnail-gallery::-webkit-scrollbar {height: 8px;}
+  .thumbnail-gallery::-webkit-scrollbar-track {background: #f1f1f1;border-radius: 10px;}
+  .thumbnail-gallery::-webkit-scrollbar-thumb {background: #888;border-radius: 10px;}
+  .thumbnail-img {flex-shrink: 0;width: 80px;height: 80px;object-fit: cover;cursor: pointer;transition: all 0.2s;border: 3px solid transparent;opacity: 0.7;}
+  .thumbnail-img:hover,.thumbnail-img.active {border-color: #A67C52;opacity: 1;}
+  .color-option {width: 50px;height: 50px;border-radius: 50%;border: 3px solid #dee2e6;cursor: pointer;transition: all 0.2s;position: relative;}
+  .color-option:hover {transform: scale(1.1);}
+  .color-option.selected {border-color: #A67C52;box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.2);}
+  .color-option.selected::after {content: '✓';position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);color: white;font-weight: bold;font-size: 1.2rem;text-shadow: 0 0 3px rgba(0,0,0,0.5);}
+  .color-label {font-size: 0.75rem;text-align: center;margin-top: 0.25rem;color: #666;}
+  .size-option {min-width: 60px;padding: 0.6rem 1rem;border: 2px solid #dee2e6;border-radius: 8px;cursor: pointer;transition: all 0.2s;text-align: center;font-weight: 600;background: white;}
+  .size-option:hover {border-color: #A67C52;transform: translateY(-2px);}
+  .size-option.selected {border-color: #A67C52;background: #A67C52;color: white;}
 </style>
 
 <script>
-  // Store product data and images
-  const productData = {
-    basePrice: {{ product.sale_price if product.sale_price else product.price }},
-    originalPrice: {{ product.price }},
-    hasSale: {{ 'true' if product.sale_price else 'false' }},
-    allImages: [
-      {% if product.images %}
-        {% for img in product.images %}
-          "{{ url_for('static', filename=img.image_url) }}"{% if not loop.last %},{% endif %}
-        {% endfor %}
-      {% elif product.image_url %}
-        "{{ url_for('static', filename=product.image_url) }}"
-      {% endif %}
-    ],
-    colorVariants: [],
-    sizeVariants: []
-  };
+const productData = {
+  basePrice: {{ product.sale_price if product.sale_price else product.price }},
+  originalPrice: {{ product.price }},
+  hasSale: {{ 'true' if product.sale_price else 'false' }},
+  allImages: [
+    {% if product.images %}
+      {% for img in product.images %}
+        "{{ url_for('static', filename=img.image_url) }}"{% if not loop.last %},{% endif %}
+      {% endfor %}
+    {% elif product.image_url %}
+      "{{ url_for('static', filename=product.image_url) }}"
+    {% endif %}
+  ],
+  colorVariants: {{ color_variants_json|safe }},
+  sizeVariants: {{ size_variants_json|safe }}
+};
 
-  let selectedColor = null;
-  let selectedSize = null;
-  let currentPriceAdjustment = 0;
+let selectedColor = null;
+let selectedSize = null;
 
-  // Initialize variants (this would come from your backend in production)
-  // For now, we'll check if variants exist in the product data
-  // You'll need to pass this from Flask: product.color_variants, product.size_variants
-
-  function initializeVariants() {
-    // You would populate these from your database
-    // Example structure:
-    // productData.colorVariants = [
-    //   { id: 'red', name: 'Red', code: '#FF0000', priceAdj: 0, images: [0, 1] },
-    //   { id: 'blue', name: 'Blue', code: '#0000FF', priceAdj: 50, images: [2, 3] }
-    // ];
-    
-    if (productData.colorVariants.length > 0) {
-      document.getElementById('colorVariantsSection').style.display = 'block';
-      renderColorOptions();
-    }
-    
-    if (productData.sizeVariants.length > 0) {
-      document.getElementById('sizeVariantsSection').style.display = 'block';
-      renderSizeOptions();
-    }
+function initializeVariants() {
+  console.log('Initializing variants...', productData);
+  
+  if (productData.colorVariants && productData.colorVariants.length > 0) {
+    document.getElementById('colorVariantsSection').style.display = 'block';
+    renderColorOptions();
   }
-
-  function renderColorOptions() {
-    const container = document.getElementById('colorOptions');
-    container.innerHTML = '';
-    
-    productData.colorVariants.forEach((color, index) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'd-flex flex-column align-items-center';
-      
-      const colorDiv = document.createElement('div');
-      colorDiv.className = 'color-option';
-      colorDiv.style.backgroundColor = color.code;
-      colorDiv.dataset.colorId = color.id;
-      colorDiv.onclick = () => selectColor(color);
-      
-      if (index === 0) {
-        colorDiv.classList.add('selected');
-        selectColor(color, false);
-      }
-      
-      const label = document.createElement('div');
-      label.className = 'color-label';
-      label.textContent = color.name;
-      
-      wrapper.appendChild(colorDiv);
-      wrapper.appendChild(label);
-      container.appendChild(wrapper);
-    });
+  
+  if (productData.sizeVariants && productData.sizeVariants.length > 0) {
+    document.getElementById('sizeVariantsSection').style.display = 'block';
+    renderSizeOptions();
   }
+}
 
-  function renderSizeOptions() {
-    const container = document.getElementById('sizeOptions');
-    container.innerHTML = '';
+function renderColorOptions() {
+  const container = document.getElementById('colorOptions');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  productData.colorVariants.forEach((color, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'd-flex flex-column align-items-center';
     
-    productData.sizeVariants.forEach((size, index) => {
-      const sizeDiv = document.createElement('div');
-      sizeDiv.className = 'size-option';
-      sizeDiv.dataset.sizeId = size.id;
-      sizeDiv.textContent = size.name;
-      sizeDiv.onclick = () => selectSize(size);
-      
-      if (index === 0) {
-        sizeDiv.classList.add('selected');
-        selectSize(size, false);
-      }
-      
-      container.appendChild(sizeDiv);
-    });
-  }
-
-  function selectColor(color, updatePrice = true) {
-    selectedColor = color;
+    const colorDiv = document.createElement('div');
+    colorDiv.className = 'color-option';
+    colorDiv.style.backgroundColor = color.code || '#000000';
+    colorDiv.dataset.colorId = color.id;
+    colorDiv.onclick = () => selectColor(color);
     
-    // Update UI
-    document.querySelectorAll('.color-option').forEach(el => {
-      el.classList.remove('selected');
-    });
-    document.querySelector(`[data-color-id="${color.id}"]`).classList.add('selected');
+    const label = document.createElement('div');
+    label.className = 'color-label';
+    label.textContent = color.name;
     
-    // Update images if color has specific images
-    if (color.images && color.images.length > 0) {
-      updateThumbnailGallery(color.images);
-      const firstImage = productData.allImages[color.images[0]];
-      if (firstImage) {
-        changeMainImage(firstImage);
-      }
+    wrapper.appendChild(colorDiv);
+    wrapper.appendChild(label);
+    container.appendChild(wrapper);
+    
+    // Auto-select first color
+    if (index === 0) {
+      setTimeout(() => selectColor(color, false), 100);
     }
-    
-    if (updatePrice) {
-      updatePrice();
-    }
-  }
-
-  function selectSize(size, updatePriceFlag = true) {
-    selectedSize = size;
-    
-    // Update UI
-    document.querySelectorAll('.size-option').forEach(el => {
-      el.classList.remove('selected');
-    });
-    document.querySelector(`[data-size-id="${size.id}"]`).classList.add('selected');
-    
-    // Update images if size has specific images
-    if (size.images && size.images.length > 0) {
-      updateThumbnailGallery(size.images);
-      const firstImage = productData.allImages[size.images[0]];
-      if (firstImage) {
-        changeMainImage(firstImage);
-      }
-    }
-    
-    if (updatePriceFlag) {
-      updatePrice();
-    }
-  }
-
-  function updateThumbnailGallery(imageIndices) {
-    const gallery = document.getElementById('thumbnailGallery');
-    gallery.innerHTML = '';
-    
-    imageIndices.forEach((imgIndex, index) => {
-      const imgUrl = productData.allImages[imgIndex];
-      if (imgUrl) {
-        const img = document.createElement('img');
-        img.src = imgUrl;
-        img.className = 'thumbnail-img rounded shadow-sm' + (index === 0 ? ' active' : '');
-        img.alt = 'Product image';
-        img.onclick = () => changeMainImage(imgUrl, img);
-        gallery.appendChild(img);
-      }
-    });
-  }
-
-  function updatePrice() {
-    let adjustment = 0;
-    
-    if (selectedColor && selectedColor.priceAdj) {
-      adjustment += parseFloat(selectedColor.priceAdj);
-    }
-    
-    if (selectedSize && selectedSize.priceAdj) {
-      adjustment += parseFloat(selectedSize.priceAdj);
-    }
-    
-    const newPrice = productData.basePrice + adjustment;
-    document.getElementById('displayPrice').textContent = '₹' + newPrice;
-    
-    if (productData.hasSale && adjustment !== 0) {
-      const newOriginal = productData.originalPrice + adjustment;
-      document.getElementById('originalPrice').textContent = '₹' + newOriginal;
-    }
-  }
-
-  function changeMainImage(imageUrl, thumbnailElement) {
-    const mainImage = document.getElementById('mainImage');
-    mainImage.style.opacity = '0';
-    
-    setTimeout(() => {
-      mainImage.src = imageUrl;
-      mainImage.style.opacity = '1';
-    }, 150);
-    
-    // Update active thumbnail
-    if (thumbnailElement) {
-      document.querySelectorAll('.thumbnail-img').forEach(img => {
-        img.classList.remove('active');
-      });
-      thumbnailElement.classList.add('active');
-    }
-  }
-
-  // Initialize on page load
-  document.addEventListener('DOMContentLoaded', function() {
-    initializeVariants();
   });
+}
+
+function renderSizeOptions() {
+  const container = document.getElementById('sizeOptions');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  productData.sizeVariants.forEach((size, index) => {
+    const sizeDiv = document.createElement('div');
+    sizeDiv.className = 'size-option';
+    sizeDiv.dataset.sizeId = size.id;
+    sizeDiv.textContent = size.name;
+    sizeDiv.onclick = () => selectSize(size);
+    
+    container.appendChild(sizeDiv);
+    
+    // Auto-select first size
+    if (index === 0) {
+      setTimeout(() => selectSize(size, false), 100);
+    }
+  });
+}
+
+function selectColor(color, updatePriceFlag = true) {
+  selectedColor = color;
+  
+  // Remove selected class from all
+  document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+  
+  // Add selected class to this one
+  const element = document.querySelector(`[data-color-id="${color.id}"]`);
+  if (element) {
+    element.classList.add('selected');
+  }
+  
+  // Update images if variant has specific images
+  if (color.images && color.images.length > 0 && productData.allImages.length > 0) {
+    updateThumbnailGallery(color.images);
+    const firstImage = productData.allImages[color.images[0]];
+    if (firstImage) changeMainImage(firstImage);
+  }
+  
+  if (updatePriceFlag) updatePrice();
+}
+
+function selectSize(size, updatePriceFlag = true) {
+  selectedSize = size;
+  
+  // Remove selected class from all
+  document.querySelectorAll('.size-option').forEach(el => el.classList.remove('selected'));
+  
+  // Add selected class to this one
+  const element = document.querySelector(`[data-size-id="${size.id}"]`);
+  if (element) {
+    element.classList.add('selected');
+  }
+  
+  // Update images if variant has specific images
+  if (size.images && size.images.length > 0 && productData.allImages.length > 0) {
+    updateThumbnailGallery(size.images);
+    const firstImage = productData.allImages[size.images[0]];
+    if (firstImage) changeMainImage(firstImage);
+  }
+  
+  if (updatePriceFlag) updatePrice();
+}
+
+function updateThumbnailGallery(imageIndices) {
+  const gallery = document.getElementById('thumbnailGallery');
+  if (!gallery) return;
+  
+  gallery.innerHTML = '';
+  
+  imageIndices.forEach((imgIndex, index) => {
+    const imgUrl = productData.allImages[imgIndex];
+    if (imgUrl) {
+      const img = document.createElement('img');
+      img.src = imgUrl;
+      img.className = 'thumbnail-img rounded shadow-sm' + (index === 0 ? ' active' : '');
+      img.alt = 'Product image';
+      img.onclick = () => changeMainImage(imgUrl, img);
+      gallery.appendChild(img);
+    }
+  });
+}
+
+function updatePrice() {
+  let adjustment = 0;
+  
+  if (selectedColor && selectedColor.priceAdj) {
+    adjustment += parseFloat(selectedColor.priceAdj);
+  }
+  if (selectedSize && selectedSize.priceAdj) {
+    adjustment += parseFloat(selectedSize.priceAdj);
+  }
+  
+  const newPrice = productData.basePrice + adjustment;
+  const displayPriceEl = document.getElementById('displayPrice');
+  if (displayPriceEl) {
+    displayPriceEl.textContent = '₹' + newPrice;
+  }
+  
+  if (productData.hasSale && adjustment !== 0) {
+    const newOriginal = productData.originalPrice + adjustment;
+    const originalPriceEl = document.getElementById('originalPrice');
+    if (originalPriceEl) {
+      originalPriceEl.textContent = '₹' + newOriginal;
+    }
+  }
+}
+
+function changeMainImage(imageUrl, thumbnailElement) {
+  const mainImage = document.getElementById('mainImage');
+  if (!mainImage) return;
+  
+  mainImage.style.opacity = '0';
+  
+  setTimeout(() => {
+    mainImage.src = imageUrl;
+    mainImage.style.opacity = '1';
+  }, 150);
+  
+  if (thumbnailElement) {
+    document.querySelectorAll('.thumbnail-img').forEach(img => img.classList.remove('active'));
+    thumbnailElement.classList.add('active');
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  initializeVariants();
+});
 </script>
 
 {% endblock %}

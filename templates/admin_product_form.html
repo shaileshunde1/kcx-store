@@ -36,7 +36,7 @@
           </select>
         </div>
 
-        <!-- IMAGE MANAGEMENT WITH REORDERING -->
+        <!-- IMAGE MANAGEMENT -->
         <div class="mb-4">
           <label class="form-label fw-semibold d-block mb-3">
             <i class="bi bi-images"></i> Product Images
@@ -164,25 +164,554 @@
   </div>
 </div>
 
+<!-- Crop Modal -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-crop"></i> Crop Image 
+          <span class="badge bg-primary ms-2" id="cropCounter"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="crop-container" style="max-height: 500px; overflow: hidden;">
+          <img id="cropImage" style="max-width: 100%; display: block;">
+        </div>
+        <div class="mt-3">
+          <p class="small text-muted mb-2">
+            <i class="bi bi-info-circle"></i> Drag to move, scroll to zoom. Recommended: Square crop (1:1 ratio)
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" id="skipCrop">
+          <i class="bi bi-skip-forward"></i> Skip Crop
+        </button>
+        <button type="button" class="btn btn-primary" id="cropAndSave">
+          <i class="bi bi-crop"></i> Crop & Continue
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
-.card{border-radius:12px}.upload-label{cursor:pointer;display:block}
+.card{border-radius:12px}
+.upload-label{cursor:pointer;display:block}
 .upload-area{border:3px dashed #dee2e6;border-radius:12px;padding:3rem 2rem;text-align:center;transition:all .3s;background:#f8f9fa}
 .upload-area:hover,.upload-area.dragover{border-color:#0d6efd;background:#e7f1ff;transform:translateY(-2px)}
-.image-card{transition:transform .2s,opacity .2s;cursor:move}.image-card.dragging{opacity:.5;transform:scale(.95)}
+.image-card{transition:transform .2s,opacity .2s;cursor:move}
+.image-card.dragging{opacity:.5;transform:scale(.95)}
 .drag-handle{position:absolute;top:5px;right:5px;background:rgba(255,255,255,.9);padding:5px 8px;border-radius:4px;cursor:move;z-index:10;font-size:1.2rem;color:#666}
 .image-wrapper{position:relative;overflow:hidden;border-radius:8px;aspect-ratio:1}
 .image-wrapper img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
 .image-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;gap:.5rem;align-items:center;justify-content:center;opacity:0;transition:opacity .3s}
-.image-wrapper:hover .image-overlay{opacity:1}.image-wrapper:hover img{transform:scale(1.05)}
+.image-wrapper:hover .image-overlay{opacity:1}
+.image-wrapper:hover img{transform:scale(1.05)}
+.preview-wrapper{position:relative;overflow:hidden;border-radius:8px;aspect-ratio:1;border:2px solid #dee2e6;background:#fff}
+.preview-wrapper img{width:100%;height:100%;object-fit:cover}
+.preview-wrapper .btn{z-index:10}
 .variant-item{background:#fff;border:1px solid #dee2e6;border-radius:8px;padding:1rem;margin-bottom:.75rem}
 .color-preview{width:40px;height:40px;border-radius:50%;border:2px solid #dee2e6;display:inline-block}
 .img-checkbox{width:60px;height:60px;border:2px solid #dee2e6;border-radius:4px;overflow:hidden;cursor:pointer;transition:all .2s}
 .img-checkbox.selected{border-color:#0d6efd;box-shadow:0 0 0 3px rgba(13,110,253,.2)}
 .img-checkbox img{width:100%;height:100%;object-fit:cover}
+.cropper-view-box,.cropper-face{border-radius:0}
+.cropper-container{max-height:500px}
 </style>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
 <script>
-const input=document.getElementById("imageInput"),preview=document.getElementById("imagePreview"),uploadArea=document.querySelector(".upload-area"),existingGrid=document.getElementById("existingImagesGrid");let files=[],allImages=[],colorVariants=[],sizeVariants=[],colorCounter=0,sizeCounter=0;function preventDefaults(e){e.preventDefault(),e.stopPropagation()}['dragenter','dragover','dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,preventDefaults,!1)),['dragenter','dragover'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.add('dragover'))),['dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.remove('dragover'))),uploadArea.addEventListener('drop',e=>handleFiles(e.dataTransfer.files)),uploadArea.addEventListener('click',()=>input.click()),input.addEventListener("change",()=>handleFiles(input.files));function handleFiles(e){preview.innerHTML="",files=Array.from(e);files.forEach((e,t)=>{const a=new FileReader;a.onload=a=>{const o=document.createElement("div");o.className="col-6 col-md-4 col-lg-3";const n=document.createElement("div");n.className="preview-wrapper position-relative";const r=document.createElement("img");r.src=a.target.result;const i=document.createElement("button");i.type="button",i.className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2",i.innerHTML='<i class="bi bi-trash"></i>',i.onclick=()=>{files.splice(t,1),o.remove(),updateFileInput()};const s=document.createElement("span");0===t&&(s.className="badge bg-primary position-absolute top-0 start-0 m-2",s.textContent="Main",n.appendChild(s)),n.appendChild(r),n.appendChild(i),o.appendChild(n),preview.appendChild(o)},a.readAsDataURL(e)}),updateAllImages()}function updateFileInput(){const e=new DataTransfer;files.forEach(t=>e.items.add(t)),input.files=e.files,updateAllImages()}function updateAllImages(){allImages=[];if(existingGrid){const e=existingGrid.querySelectorAll('.image-card img');e.forEach(e=>allImages.push({src:e.src,type:'existing'}))}files.forEach((e,t)=>{const a=preview.querySelectorAll('img')[t];a&&allImages.push({src:a.src,type:'new',file:e})}),updateVariantSelectors()}if(existingGrid){new Sortable(existingGrid,{animation:150,handle:'.drag-handle',onEnd:()=>{updateImageOrder(),updateMainBadge()}});function updateImageOrder(){const e=Array.from(existingGrid.querySelectorAll('.image-card')).map(e=>e.dataset.imageId);document.getElementById('imageOrderInput').value=JSON.stringify(e)}function updateMainBadge(){const e=existingGrid.querySelectorAll('.image-card');e.forEach((e,t)=>{const a=e.querySelector('.badge.bg-warning');a&&a.remove(),0===t&&(a=document.createElement('span'),a.className='badge bg-warning text-dark position-absolute top-0 start-0 m-2',a.innerHTML='<i class="bi bi-star-fill"></i> Main',e.querySelector('.image-wrapper').appendChild(a))})}document.querySelectorAll('.set-main-btn').forEach(e=>{e.addEventListener('click',function(){const e=this.getAttribute('data-image-id'),t=document.querySelector(`[data-image-id="${e}"]`);t&&existingGrid&&(existingGrid.insertBefore(t,existingGrid.firstChild),updateImageOrder(),updateMainBadge())})}),document.querySelectorAll('.delete-image-btn').forEach(e=>{e.addEventListener('click',function(){const e=this.getAttribute('data-image-id');confirm('Delete this image?')&&deleteImage(e)})}),document.getElementById('deleteAllBtn')?.addEventListener('click',function(){if(confirm('Delete all images?')){const e=Array.from(document.querySelectorAll('.delete-image-btn')).map(e=>e.getAttribute('data-image-id'));e.forEach(e=>deleteImage(e))}});function deleteImage(e){fetch(`/admin/products/delete-image/${e}`,{method:'POST',headers:{'Content-Type':'application/json'}}).then(e=>e.json()).then(t=>{if(t.success){const t=document.querySelector(`[data-image-id="${e}"]`);t&&(t.style.opacity='0',setTimeout(()=>{t.remove(),updateImageOrder(),updateMainBadge(),updateAllImages()},300))}else alert('Failed to delete')}).catch(()=>alert('Failed to delete'))}}document.getElementById('addColorBtn').addEventListener('click',()=>addColorVariant());function addColorVariant(e=null){const t=e?e.id:`c${colorCounter++}`,a=document.createElement('div');a.className='variant-item';a.dataset.variantId=t;a.innerHTML=`<div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0">Color Variant</h6><button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button></div><div class="row g-2 mb-2"><div class="col-md-5"><input type="text" class="form-control color-name" placeholder="Color name" value="${e?e.name:''}"></div><div class="col-md-3"><input type="color" class="form-control color-code" value="${e?e.code:'#000000'}"></div><div class="col-md-4"><input type="number" class="form-control color-price" placeholder="Price adj." value="${e?e.price_adj:''}"></div></div><div class="image-selector" id="colorImg${t}"></div>`;document.getElementById('colorVariantList').appendChild(a);a.querySelector('.remove-variant').onclick=()=>a.remove();updateVariantSelectors()}document.getElementById('addSizeBtn').addEventListener('click',()=>addSizeVariant());function addSizeVariant(e=null){const t=e?e.id:`s${sizeCounter++}`,a=document.createElement('div');a.className='variant-item';a.dataset.variantId=t;a.innerHTML=`<div class="d-flex justify-content-between align-items-start mb-2"><h6 class="mb-0">Size Variant</h6><button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button></div><div class="row g-2 mb-2"><div class="col-md-6"><input type="text" class="form-control size-name" placeholder="Size (S, M, L, etc.)" value="${e?e.name:''}"></div><div class="col-md-6"><input type="number" class="form-control size-price" placeholder="Price adjustment" value="${e?e.price_adj:''}"></div></div><div class="image-selector" id="sizeImg${t}"></div>`;document.getElementById('sizeVariantList').appendChild(a);a.querySelector('.remove-variant').onclick=()=>a.remove();updateVariantSelectors()}function updateVariantSelectors(){document.querySelectorAll('.image-selector').forEach(e=>{e.innerHTML='<p class="small text-muted mb-2">Select images for this variant:</p><div class="d-flex flex-wrap gap-2"></div>';const t=e.querySelector('.d-flex');allImages.forEach((e,a)=>{const o=document.createElement('div');o.className='img-checkbox';o.innerHTML=`<img src="${e.src}" alt="Image ${a+1}">`;o.onclick=()=>o.classList.toggle('selected');t.appendChild(o)})})}document.getElementById('productForm').addEventListener('submit',function(e){const t=[];document.querySelectorAll('#colorVariantList .variant-item').forEach(e=>{const a=e.dataset.variantId,o={id:a,name:e.querySelector('.color-name').value,code:e.querySelector('.color-code').value,price_adj:e.querySelector('.color-price').value||0,images:[]};e.querySelectorAll('.img-checkbox.selected').forEach((e,t)=>{o.images.push(t)});t.push(o)});const a=[];document.querySelectorAll('#sizeVariantList .variant-item').forEach(e=>{const t=e.dataset.variantId,o={id:t,name:e.querySelector('.size-name').value,price_adj:e.querySelector('.size-price').value||0,images:[]};e.querySelectorAll('.img-checkbox.selected').forEach((e,t)=>{o.images.push(t)});a.push(o)});document.getElementById('colorVariantsData').value=JSON.stringify(t);document.getElementById('sizeVariantsData').value=JSON.stringify(a)});
+// PART 1: Variables and Initial Setup
+const input=document.getElementById("imageInput");
+const preview=document.getElementById("imagePreview");
+const uploadArea=document.querySelector(".upload-area");
+const existingGrid=document.getElementById("existingImagesGrid");
+
+let files=[];
+let allImages=[];
+let colorVariants=[];
+let sizeVariants=[];
+let colorCounter=0;
+let sizeCounter=0;
+let cropper=null;
+let currentImageFile=null;
+let imagesToProcess=[];
+let currentProcessIndex=0;
+let cropModalInstance=null;
+
+// LOAD EXISTING VARIANTS FROM SERVER
+{% if product %}
+const existingColorVariants = {{ existing_color_variants|safe }};
+const existingSizeVariants = {{ existing_size_variants|safe }};
+{% else %}
+const existingColorVariants = [];
+const existingSizeVariants = [];
+{% endif %}
+
+function preventDefaults(e){e.preventDefault();e.stopPropagation();}
+
+['dragenter','dragover','dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,preventDefaults,!1));
+['dragenter','dragover'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.add('dragover')));
+['dragleave','drop'].forEach(e=>uploadArea.addEventListener(e,()=>uploadArea.classList.remove('dragover')));
+
+uploadArea.addEventListener('drop',e=>handleFiles(e.dataTransfer.files));
+uploadArea.addEventListener('click',()=>input.click());
+input.addEventListener("change",()=>handleFiles(input.files));
+
+function handleFiles(fileList){
+  imagesToProcess=Array.from(fileList);
+  currentProcessIndex=0;
+  if(imagesToProcess.length>0){
+    showCropModal(imagesToProcess[currentProcessIndex]);
+  }
+}
+
+function showCropModal(file){
+  currentImageFile=file;
+  const reader=new FileReader();
+  
+  reader.onload=function(e){
+    const cropImage=document.getElementById('cropImage');
+    cropImage.src=e.target.result;
+    
+    document.getElementById('cropCounter').textContent=`${currentProcessIndex+1} of ${imagesToProcess.length}`;
+    
+    const modalEl=document.getElementById('cropModal');
+    cropModalInstance=new bootstrap.Modal(modalEl);
+    cropModalInstance.show();
+    
+    modalEl.addEventListener('shown.bs.modal',function(){
+      if(cropper) cropper.destroy();
+      cropper=new Cropper(cropImage,{
+        aspectRatio:1,
+        viewMode:1,
+        autoCropArea:1,
+        responsive:true,
+        background:false,
+        zoomable:true,
+        scalable:true,
+        cropBoxResizable:true,
+        cropBoxMovable:true
+      });
+    },{once:true});
+  };
+  
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('cropAndSave').addEventListener('click',function(){
+  if(!cropper) return;
+  
+  cropper.getCroppedCanvas({
+    width:800,
+    height:800,
+    imageSmoothingEnabled:true,
+    imageSmoothingQuality:'high'
+  }).toBlob(function(blob){
+    const croppedFile=new File([blob],currentImageFile.name,{
+      type:currentImageFile.type,
+      lastModified:Date.now()
+    });
+    
+    files.push(croppedFile);
+    processNextImage();
+  },'image/jpeg',0.95);
+});
+
+document.getElementById('skipCrop').addEventListener('click',function(){
+  files.push(currentImageFile);
+  processNextImage();
+});
+
+function processNextImage(){
+  currentProcessIndex++;
+  
+  if(currentProcessIndex<imagesToProcess.length){
+    if(cropper){
+      cropper.destroy();
+      cropper=null;
+    }
+    showCropModal(imagesToProcess[currentProcessIndex]);
+  }else{
+    closeModalAndFinish();
+  }
+}
+
+function closeModalAndFinish(){
+  if(cropper){
+    cropper.destroy();
+    cropper=null;
+  }
+  
+  if(cropModalInstance){
+    cropModalInstance.hide();
+  }
+  
+  setTimeout(()=>{
+    const backdrop=document.querySelector('.modal-backdrop');
+    if(backdrop) backdrop.remove();
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow='';
+    document.body.style.paddingRight='';
+    
+    renderPreview();
+    updateAllImages();
+    input.value='';
+    imagesToProcess=[];
+    currentProcessIndex=0;
+  },300);
+}
+
+document.getElementById('cropModal').addEventListener('hidden.bs.modal',function(){
+  if(cropper){
+    cropper.destroy();
+    cropper=null;
+  }
+  
+  const backdrop=document.querySelector('.modal-backdrop');
+  if(backdrop) backdrop.remove();
+  document.body.classList.remove('modal-open');
+  document.body.style.overflow='';
+  document.body.style.paddingRight='';
+  
+  imagesToProcess=[];
+  currentProcessIndex=0;
+  input.value='';
+});
+
+// PART 2: Continue from PART 1
+
+function renderPreview(){
+  preview.innerHTML="";
+  
+  files.forEach((file,idx)=>{
+    const reader=new FileReader();
+    
+    reader.onload=function(e){
+      const col=document.createElement("div");
+      col.className="col-6 col-md-4 col-lg-3";
+      
+      const wrapper=document.createElement("div");
+      wrapper.className="preview-wrapper position-relative";
+      
+      const img=document.createElement("img");
+      img.src=e.target.result;
+      img.alt="Preview";
+      
+      const deleteBtn=document.createElement("button");
+      deleteBtn.type="button";
+      deleteBtn.className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2";
+      deleteBtn.innerHTML='<i class="bi bi-trash"></i>';
+      deleteBtn.onclick=()=>{
+        files.splice(idx,1);
+        renderPreview();
+        updateFileInput();
+      };
+      
+      if(idx===0){
+        const badge=document.createElement("span");
+        badge.className="badge bg-primary position-absolute top-0 start-0 m-2";
+        badge.innerHTML='<i class="bi bi-star-fill"></i> Main';
+        wrapper.appendChild(badge);
+      }
+      
+      wrapper.appendChild(img);
+      wrapper.appendChild(deleteBtn);
+      col.appendChild(wrapper);
+      preview.appendChild(col);
+    };
+    
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateFileInput(){
+  const dt=new DataTransfer();
+  files.forEach(f=>dt.items.add(f));
+  input.files=dt.files;
+  updateAllImages();
+}
+
+function updateAllImages(){
+  allImages=[];
+  
+  if(existingGrid){
+    const existingImgs=existingGrid.querySelectorAll('.image-card img');
+    existingImgs.forEach(img=>allImages.push({src:img.src,type:'existing'}));
+  }
+  
+  let processedCount=0;
+  files.forEach((file,idx)=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      allImages.push({src:e.target.result,type:'new',file:file});
+      processedCount++;
+      if(processedCount===files.length){
+        updateVariantSelectors();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  if(files.length===0){
+    updateVariantSelectors();
+  }
+}
+
+if(existingGrid){
+  new Sortable(existingGrid,{
+    animation:150,
+    handle:'.drag-handle',
+    onEnd:()=>{
+      updateImageOrder();
+      updateMainBadge();
+    }
+  });
+
+  function updateImageOrder(){
+    const order=Array.from(existingGrid.querySelectorAll('.image-card')).map(e=>e.dataset.imageId);
+    document.getElementById('imageOrderInput').value=JSON.stringify(order);
+  }
+
+  function updateMainBadge(){
+    const cards=existingGrid.querySelectorAll('.image-card');
+    cards.forEach((card,idx)=>{
+      const existingBadge=card.querySelector('.badge.bg-warning');
+      if(existingBadge) existingBadge.remove();
+      
+      if(idx===0){
+        const badge=document.createElement('span');
+        badge.className='badge bg-warning text-dark position-absolute top-0 start-0 m-2';
+        badge.innerHTML='<i class="bi bi-star-fill"></i> Main';
+        card.querySelector('.image-wrapper').appendChild(badge);
+      }
+    });
+  }
+
+  document.querySelectorAll('.set-main-btn').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const imgId=this.getAttribute('data-image-id');
+      const card=document.querySelector(`[data-image-id="${imgId}"]`);
+      if(card&&existingGrid){
+        existingGrid.insertBefore(card,existingGrid.firstChild);
+        updateImageOrder();
+        updateMainBadge();
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-image-btn').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const imgId=this.getAttribute('data-image-id');
+      if(confirm('Delete this image?')){
+        deleteImage(imgId);
+      }
+    });
+  });
+
+  document.getElementById('deleteAllBtn')?.addEventListener('click',function(){
+    if(confirm('Delete all images?')){
+      const imageIds=Array.from(document.querySelectorAll('.delete-image-btn')).map(btn=>btn.getAttribute('data-image-id'));
+      imageIds.forEach(id=>deleteImage(id));
+    }
+  });
+
+  function deleteImage(imgId){
+    fetch(`/admin/products/delete-image/${imgId}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'}
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.success){
+        const card=document.querySelector(`[data-image-id="${imgId}"]`);
+        if(card){
+          card.style.opacity='0';
+          setTimeout(()=>{
+            card.remove();
+            updateImageOrder();
+            updateMainBadge();
+            updateAllImages();
+          },300);
+        }
+      }else{
+        alert('Failed to delete');
+      }
+    })
+    .catch(()=>alert('Failed to delete'));
+  }
+}
+
+// COLOR VARIANT FUNCTIONS
+document.getElementById('addColorBtn').addEventListener('click',()=>addColorVariant());
+
+function addColorVariant(data=null){
+  const id=data?data.id:`c${colorCounter++}`;
+  const item=document.createElement('div');
+  item.className='variant-item';
+  item.dataset.variantId=id;
+  item.innerHTML=`
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <h6 class="mb-0">Color Variant</h6>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-5">
+        <input type="text" class="form-control color-name" placeholder="Color name" value="${data?data.name:''}">
+      </div>
+      <div class="col-md-3">
+        <input type="color" class="form-control color-code" value="${data?data.code:'#000000'}">
+      </div>
+      <div class="col-md-4">
+        <input type="number" class="form-control color-price" placeholder="Price adj." value="${data?data.price_adj:''}">
+      </div>
+    </div>
+    <div class="image-selector" id="colorImg${id}"></div>
+  `;
+  document.getElementById('colorVariantList').appendChild(item);
+  item.querySelector('.remove-variant').onclick=()=>item.remove();
+  
+  // Pre-select images if data provided
+  if(data && data.images){
+    setTimeout(()=>{
+      const selector=item.querySelector('.image-selector');
+      const checkboxes=selector.querySelectorAll('.img-checkbox');
+      data.images.forEach(imgIdx=>{
+        if(checkboxes[imgIdx]){
+          checkboxes[imgIdx].classList.add('selected');
+        }
+      });
+    },100);
+  }
+  
+  updateVariantSelectors();
+}
+
+// SIZE VARIANT FUNCTIONS
+document.getElementById('addSizeBtn').addEventListener('click',()=>addSizeVariant());
+
+function addSizeVariant(data=null){
+  const id=data?data.id:`s${sizeCounter++}`;
+  const item=document.createElement('div');
+  item.className='variant-item';
+  item.dataset.variantId=id;
+  item.innerHTML=`
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <h6 class="mb-0">Size Variant</h6>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-variant"><i class="bi bi-x"></i></button>
+    </div>
+    <div class="row g-2 mb-2">
+      <div class="col-md-6">
+        <input type="text" class="form-control size-name" placeholder="Size (S, M, L, etc.)" value="${data?data.name:''}">
+      </div>
+      <div class="col-md-6">
+        <input type="number" class="form-control size-price" placeholder="Price adjustment" value="${data?data.price_adj:''}">
+      </div>
+    </div>
+    <div class="image-selector" id="sizeImg${id}"></div>
+  `;
+  document.getElementById('sizeVariantList').appendChild(item);
+  item.querySelector('.remove-variant').onclick=()=>item.remove();
+  
+  // Pre-select images if data provided
+  if(data && data.images){
+    setTimeout(()=>{
+      const selector=item.querySelector('.image-selector');
+      const checkboxes=selector.querySelectorAll('.img-checkbox');
+      data.images.forEach(imgIdx=>{
+        if(checkboxes[imgIdx]){
+          checkboxes[imgIdx].classList.add('selected');
+        }
+      });
+    },100);
+  }
+  
+  updateVariantSelectors();
+}
+
+function updateVariantSelectors(){
+  document.querySelectorAll('.image-selector').forEach(selector=>{
+    selector.innerHTML='<p class="small text-muted mb-2">Select images for this variant:</p><div class="d-flex flex-wrap gap-2"></div>';
+    const container=selector.querySelector('.d-flex');
+    
+    allImages.forEach((img,idx)=>{
+      const box=document.createElement('div');
+      box.className='img-checkbox';
+      box.innerHTML=`<img src="${img.src}" alt="Image ${idx+1}">`;
+      box.onclick=()=>box.classList.toggle('selected');
+      container.appendChild(box);
+    });
+  });
+}
+
+// FORM SUBMISSION
+document.getElementById('productForm').addEventListener('submit',function(e){
+  // CRITICAL FIX: Update file input before submission
+  if(files.length > 0){
+    updateFileInput();
+  }
+  
+  const colors=[];
+  document.querySelectorAll('#colorVariantList .variant-item').forEach(item=>{
+    const id=item.dataset.variantId;
+    const variant={
+      id:id,
+      name:item.querySelector('.color-name').value,
+      code:item.querySelector('.color-code').value,
+      price_adj:item.querySelector('.color-price').value||0,
+      images:[]
+    };
+    item.querySelectorAll('.img-checkbox.selected').forEach((box,idx)=>{
+      const allBoxes=Array.from(item.querySelectorAll('.img-checkbox'));
+      const imgIdx=allBoxes.indexOf(box);
+      variant.images.push(imgIdx);
+    });
+    colors.push(variant);
+  });
+
+  const sizes=[];
+  document.querySelectorAll('#sizeVariantList .variant-item').forEach(item=>{
+    const id=item.dataset.variantId;
+    const variant={
+      id:id,
+      name:item.querySelector('.size-name').value,
+      price_adj:item.querySelector('.size-price').value||0,
+      images:[]
+    };
+    item.querySelectorAll('.img-checkbox.selected').forEach((box,idx)=>{
+      const allBoxes=Array.from(item.querySelectorAll('.img-checkbox'));
+      const imgIdx=allBoxes.indexOf(box);
+      variant.images.push(imgIdx);
+    });
+    sizes.push(variant);
+  });
+
+  document.getElementById('colorVariantsData').value=JSON.stringify(colors);
+  document.getElementById('sizeVariantsData').value=JSON.stringify(sizes);
+});
+
+// CRITICAL: Load existing variants on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize all images first
+  updateAllImages();
+  
+  // Load existing color variants
+  setTimeout(()=>{
+    existingColorVariants.forEach(cv => {
+      addColorVariant(cv);
+    });
+    
+    // Load existing size variants
+    existingSizeVariants.forEach(sv => {
+      addSizeVariant(sv);
+    });
+  }, 500);
+});
 </script>
 {% endblock %}

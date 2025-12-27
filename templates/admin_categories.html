@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Categories | Admin{% endblock %}
+
+{% block content %}
+
+<style>
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+</style>
+
+<div class="admin-container">
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Manage Categories</h2>
+      <p class="text-muted mb-0">Add, remove, and reorder your product categories</p>
+    </div>
+    <a href="{{ url_for('admin_products') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Products
+    </a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="row">
+    <!-- Add New Category Card -->
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="bi bi-plus-circle text-success"></i> Add New Category
+          </h5>
+          <form method="POST" action="{{ url_for('admin_category_add') }}">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Category Name</label>
+              <input type="text" name="name" class="form-control form-control-lg" placeholder="e.g., Plushies" required>
+              <div class="form-text">Enter a unique category name</div>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-plus-lg"></i> Add Category
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing Categories -->
+    <div class="col-md-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">
+              <i class="bi bi-list-ul text-primary"></i> Existing Categories ({{ categories|length }})
+            </h5>
+            {% if categories %}
+            <span class="badge bg-info">
+              <i class="bi bi-arrows-move"></i> Drag to reorder
+            </span>
+            {% endif %}
+          </div>
+
+          {% if categories %}
+            <div id="categoriesList" class="list-group">
+              {% for category in categories %}
+              <div class="list-group-item category-item" data-category-id="{{ category.id }}" draggable="true">
+                <div class="d-flex align-items-center">
+                  <div class="drag-handle me-3">
+                    <i class="bi bi-grip-vertical fs-4 text-muted"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-bold">{{ category.name }}</h6>
+                    <small class="text-muted">Order: {{ loop.index }}</small>
+                  </div>
+                  <form method="POST" action="{{ url_for('admin_category_delete', category_id=category.id) }}" 
+                        onsubmit="return confirm('Delete category \'{{ category.name }}\'? This action cannot be undone.');"
+                        class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center py-5">
+              <i class="bi bi-inbox display-1 text-muted"></i>
+              <p class="text-muted mt-3 mb-0">No categories yet. Add your first category to get started!</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Card -->
+  <div class="card border-0 bg-light mt-4">
+    <div class="card-body">
+      <h6 class="fw-bold mb-2"><i class="bi bi-info-circle text-info"></i> Category Management Tips</h6>
+      <ul class="mb-0 small">
+        <li>Categories help organize your products and improve navigation</li>
+        <li>Drag and drop to reorder categories - the order will be reflected on your website</li>
+        <li>Categories with products cannot be deleted - remove products from the category first</li>
+        <li>Category names should be clear and descriptive for customers</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<style>
+.admin-container {
+  max-width: 1200px;
+}
+
+.category-item {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: white;
+  transition: all 0.2s;
+  cursor: move;
+}
+
+.category-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.category-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.list-group {
+  gap: 0;
+}
+
+.card {
+  border-radius: 12px;
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const categoriesList = document.getElementById('categoriesList');
+  
+  if (categoriesList) {
+    const sortable = new Sortable(categoriesList, {
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'dragging',
+      onEnd: function(evt) {
+        // Get new order
+        const order = [];
+        document.querySelectorAll('.category-item').forEach(item => {
+          order.push(item.dataset.categoryId);
+        });
+        
+        // Send to server
+        fetch('{{ url_for("admin_category_reorder") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ order: order })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Update order numbers
+            document.querySelectorAll('.category-item').forEach((item, index) => {
+              const orderText = item.querySelector('small');
+              if (orderText) {
+                orderText.textContent = `Order: ${index + 1}`;
+              }
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error updating order:', error);
+          alert('Failed to update category order. Please refresh and try again.');
+        });
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

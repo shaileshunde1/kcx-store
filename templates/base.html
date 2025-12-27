@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
       body { 
@@ -17,27 +17,27 @@
         padding-top: 140px;
       }
       
-      /* ==================== ANNOUNCEMENT BAR ==================== */
+      /* ==================== ANNOUNCEMENT BAR - Light Beige/Cream ==================== */
       .announcement-bar {
-        background: linear-gradient(135deg, #8B6F47 0%, #A67C52 100%);
-        color: #FFF8F0;
+        background: linear-gradient(135deg, #F5E6D3 0%, #FFF8DC 100%);
+        color: #6B4423;
         padding: 10px 0;
         font-size: 0.9rem;
-        font-weight: 500;
+        font-weight: 600;
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         z-index: 1050;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       }
 
       .announcement-bar i {
         margin-right: 8px;
-        color: #FFF8F0;
+        color: #6B4423;
       }
 
-      /* ==================== STICKY NAVBAR ==================== */
+      /* ==================== STICKY NAVBAR - Dark Brown ==================== */
       .navbar {
         position: fixed;
         top: 40px;
@@ -59,35 +59,71 @@
         display: none;
       }
 
-      /* ==================== LOGO WITH SINGLE FLOWER ==================== */
+      /* ==================== LOGO - Simple Daisy Flower ==================== */
       .navbar-brand {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        font-weight: 700;
-        font-size: 1.8rem;
-        letter-spacing: 0.06em;
+        font-weight: 600;
+        font-size: 2rem;
+        letter-spacing: 0.1em;
         color: #FFF8F0 !important;
         transition: all 0.3s ease;
-        font-family: 'Poppins', sans-serif;
+        font-family: 'Cormorant Garamond', serif;
         text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0;
       }
 
-      /* Single flower replacing 'o' - FIXED VERSION */
-      .navbar-brand .flower-o {
-        display: inline-block;
+      /* Logo text with flower */
+      .navbar-brand .logo-text {
+        display: flex;
+        align-items: center;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+      }
+
+      /* Cherry Blossom Flower replacing 'O' */
+      .navbar-brand .crochet-flower {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 0.75em;
+        height: 0.75em;
+        margin: 0 0.05em;
         position: relative;
-        font-size: 1.0em;
-        line-height: 1;
         vertical-align: middle;
-        margin: 0 -0.05em;
+        transform: translateY(-0.02em);
+      }
+
+      /* Cherry Blossom emoji */
+      .navbar-brand .crochet-flower::before {
+        content: '🌸';
+        position: absolute;
+        font-size: 0.85em;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+      }
+
+      .navbar-brand .crochet-flower::after {
+        content: '';
+      }
+
+      .navbar-brand .store-text {
+        margin-left: 0.4em;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        font-family: 'Cormorant Garamond', serif;
       }
 
       .navbar.scrolled .navbar-brand {
-        font-size: 0.9rem;
+        font-size: 1.6rem;
       }
 
-      /* Nav links */
+      /* Nav links - Light text on dark background */
       .navbar .nav-link {
         color: #FFF8F0 !important;
         font-weight: 500;
@@ -95,7 +131,7 @@
       }
 
       .navbar .nav-link:hover {
-        color: #FFE4B5 !important;
+        color: #F5E6D3 !important;
         transform: translateY(-2px);
       }
 
@@ -138,6 +174,11 @@
       .category-dropdown .dropdown-item i {
         margin-right: 8px;
         width: 20px;
+      }
+
+      /* Dropdown toggle arrow */
+      .navbar .dropdown-toggle::after {
+        color: #FFF8F0;
       }
 
       /* Footer */
@@ -253,11 +294,11 @@
         .navbar-brand {
           position: static;
           transform: none;
-          font-size: 1.4rem;
+          font-size: 1.5rem;
         }
 
         .navbar.scrolled .navbar-brand {
-          font-size: 1.2rem;
+          font-size: 1.3rem;
         }
 
         body {
@@ -269,6 +310,10 @@
         .announcement-bar {
           font-size: 0.8rem;
           padding: 8px 0;
+        }
+
+        .navbar-brand {
+          font-size: 1.3rem;
         }
 
         .footer-section {
@@ -284,7 +329,7 @@
 
   <body>
 
-    <!-- Announcement Bar -->
+    <!-- Announcement Bar - Light Beige/Cream -->
     <div class="announcement-bar text-center" id="announcementBar">
       <div class="container">
         <i class="bi bi-truck"></i>
@@ -292,7 +337,7 @@
       </div>
     </div>
 
-    <!-- Navbar -->
+    <!-- Navbar - Dark Brown -->
     <nav class="navbar navbar-expand-lg navbar-dark" id="mainNavbar">
       <div class="container">
 
@@ -320,9 +365,12 @@
           </div>
         </div>
 
-        <!-- Centered Brand with SINGLE Flower (FIXED) -->
+        <!-- Centered Logo with Simple Daisy Flower -->
         <a class="navbar-brand" href="/">
-          KCX Cr<span class="flower-o">🌸</span>chet
+          <span class="logo-text">
+            KCX CR<span class="crochet-flower"></span>CHET
+          </span>
+          <span class="store-text">STORE</span>
         </a>
 
         <!-- Right side navigation -->
@@ -339,6 +387,7 @@
               <li><a class="dropdown-item" href="{{ url_for('admin_index') }}">Dashboard</a></li>
               <li><a class="dropdown-item" href="{{ url_for('admin_orders') }}">Orders</a></li>
               <li><a class="dropdown-item" href="{{ url_for('admin_products') }}">Products</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('admin_categories') }}">Categories</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="{{ url_for('admin_logout') }}">Logout</a></li>
             </ul>
@@ -432,7 +481,7 @@
                   </h2>
                   <div id="shippingPolicy" class="accordion-collapse collapse" data-bs-parent="#policyAccordion">
                     <div class="accordion-body">
-                      <p><strong>Delivery Time:</strong> 5-7 business days across India</p>
+                      <p><strong>Delivery Time:</strong> 7-14 business days across India</p>
                       <p><strong>Free Shipping:</strong> On orders above ₹1,000</p>
                       <p><strong>Shipping Charges:</strong> ₹100 for orders below ₹1,000</p>
                       <p><strong>Tracking:</strong> Tracking details will be sent via email/SMS once your order is shipped.</p>

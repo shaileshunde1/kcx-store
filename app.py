@@ -30,16 +30,7 @@ UPLOAD_FOLDER = os.path.join("static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "products")
 
-# CATEGORIES CONFIGURATION
-CATEGORIES = [
-    "Seasonal",
-    "Desk Buddies",
-    "Keyrings",
-    "Mini Bouquet",
-    "Yarn",
-    "Bookmarks",
-    "Forever Flowers"
-]
+
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -64,6 +55,15 @@ db = SQLAlchemy(app)
 from flask_migrate import Migrate
 migrate = Migrate(app, db)
 
+class Category(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    order_index = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<Category {self.name}>"
+
 # ---- Twilio SMS Config (local dev only) ----
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")           
@@ -82,6 +82,7 @@ class Product(db.Model):
     
     # NEW FIELDS
     is_new_launch = db.Column(db.Boolean, default=False)
+    new_launch_date = db.Column(db.DateTime, nullable=True)
     sale_price = db.Column(db.Integer, nullable=True)  # If set, product is on sale
 
     images = db.relationship(
@@ -90,6 +91,28 @@ class Product(db.Model):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+
+def cleanup_old_new_launches():
+    """Automatically remove 'New Launch' badge from products older than 7 days"""
+    from datetime import timedelta
+    
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    
+    old_launches = Product.query.filter(
+        Product.is_new_launch == True,
+        Product.new_launch_date != None,
+        Product.new_launch_date < seven_days_ago
+    ).all()
+    
+    for product in old_launches:
+        product.is_new_launch = False
+        product.new_launch_date = None
+    
+    if old_launches:
+        db.session.commit()
+        print(f"✓ Removed 'New Launch' from {len(old_launches)} products")
+    
+    return len(old_launches)
 
 
 class ProductImage(db.Model):
@@ -197,7 +220,7 @@ def inject_cart():
         cart_total_global=total,
         cart_count_global=count,
         cart_open_global=open_flag,
-        categories_global=CATEGORIES
+        categories_global=[c.name for c in Category.query.order_by(Category.order_index).all()]
     )
 
 
@@ -205,14 +228,15 @@ def inject_cart():
 
 @app.route("/")
 def home():
+    cleanup_old_new_launches()
     bestsellers = Product.query.filter_by(is_bestseller=True).all()
     
     # Get products by category for home page
     category_products = {}
-    for category in CATEGORIES:
-        products = Product.query.filter_by(category=category).limit(4).all()
+    for category in Category.query.order_by(Category.order_index).all():
+        products = Product.query.filter_by(category=category.name).limit(4).all()
         if products:
-            category_products[category] = products
+            category_products[category.name] = products
     
     return render_template("home.html", products=bestsellers, category_products=category_products)
 
@@ -221,10 +245,12 @@ def home():
 def shop():
     category = request.args.get('category')
     
-    if category and category in CATEGORIES:
-        products = Product.query.filter_by(category=category).all()
+    if category and Category.query.filter_by(name=category).first():
+        products = Product.query.filter_by(category=category)\
+            .order_by(Product.is_new_launch.desc(), Product.id.desc()).all()
     else:
-        products = Product.query.all()
+        products = Product.query\
+            .order_by(Product.is_new_launch.desc(), Product.id.desc()).all()
     
     return render_template("shop.html", products=products, selected_category=category)
 
@@ -232,26 +258,73 @@ def shop():
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     
-    # Get suggested products from same category or random products
+    # GET VARIANTS FROM DATABASE
+    color_variants = ProductVariant.query.filter_by(
+        product_id=product_id, 
+        variant_type='color'
+    ).all()
+    
+    size_variants = ProductVariant.query.filter_by(
+        product_id=product_id, 
+        variant_type='size'
+    ).all()
+    
+    # Convert to JSON-friendly format
+    import json
+    colors_data = []
+    for cv in color_variants:
+        colors_data.append({
+            'id': cv.id,
+            'name': cv.name,
+            'code': cv.code,
+            'priceAdj': cv.price_adjustment,
+            'images': json.loads(cv.image_indices) if cv.image_indices else []
+        })
+    
+    sizes_data = []
+    for sv in size_variants:
+        sizes_data.append({
+            'id': sv.id,
+            'name': sv.name,
+            'priceAdj': sv.price_adjustment,
+            'images': json.loads(sv.image_indices) if sv.image_indices else []
+        })
+    
+    # DEBUGGING: Print to console
+    print(f"DEBUG - Product {product_id}:")
+    print(f"  Images in DB: {len(product.images)}")
+    print(f"  Color variants: {len(colors_data)}")
+    print(f"  Size variants: {len(sizes_data)}")
+    for cv in colors_data:
+        print(f"    Color '{cv['name']}' -> images: {cv['images']}")
+    for sv in sizes_data:
+        print(f"    Size '{sv['name']}' -> images: {sv['images']}")
+    
+    # Get suggested products
     if product.category:
         suggested = Product.query.filter(
             Product.category == product.category,
             Product.id != product_id
         ).limit(4).all()
         
-        # If not enough from same category, add random products
         if len(suggested) < 4:
             additional = Product.query.filter(
                 Product.id != product_id
             ).order_by(db.func.random()).limit(4 - len(suggested)).all()
             suggested.extend(additional)
     else:
-        # Get random products
         suggested = Product.query.filter(
             Product.id != product_id
         ).order_by(db.func.random()).limit(4).all()
     
-    return render_template("product.html", product=product, suggested_products=suggested)
+    return render_template(
+        "product.html", 
+        product=product, 
+        suggested_products=suggested,
+        color_variants_json=json.dumps(colors_data),
+        size_variants_json=json.dumps(sizes_data)
+    )
+
 
 @app.route("/create_order", methods=["POST"])
 def create_order():
@@ -439,6 +512,7 @@ def admin_product_add():
         description = request.form.get("description")
         is_bestseller = request.form.get("is_bestseller") == "on"
         is_new_launch = request.form.get("is_new_launch") == "on"
+        new_launch_date = datetime.utcnow() if is_new_launch else None
         category = request.form.get("category")
         
         sale_price_str = request.form.get("sale_price", "").strip()
@@ -451,6 +525,7 @@ def admin_product_add():
             image_url=None,
             is_bestseller=is_bestseller,
             is_new_launch=is_new_launch,
+            new_launch_date=new_launch_date,
             category=category,
             sale_price=sale_price
         )
@@ -473,7 +548,6 @@ def admin_product_add():
                 )
 
         # Handle variants
-        import json
         color_variants_json = request.form.get("color_variants", "[]")
         size_variants_json = request.form.get("size_variants", "[]")
         
@@ -509,7 +583,14 @@ def admin_product_add():
         db.session.commit()
         return redirect(url_for("admin_products"))
 
-    return render_template("admin_product_form.html", product=None, categories=CATEGORIES)
+    # FOR GET REQUEST - adding new product (no existing variants)
+    return render_template(
+        "admin_product_form.html", 
+        product=None, 
+        categories=[c.name for c in Category.query.order_by(Category.order_index).all()],
+        existing_color_variants=json.dumps([]),
+        existing_size_variants=json.dumps([])
+    )
 
 
 @app.route("/admin/products/edit/<int:product_id>", methods=["GET", "POST"])
@@ -523,13 +604,22 @@ def admin_product_edit(product_id):
         product.description = request.form.get("description")
         product.is_bestseller = request.form.get("is_bestseller") == "on"
         product.is_new_launch = request.form.get("is_new_launch") == "on"
+        is_new_launch_checked = request.form.get("is_new_launch") == "on"
+        
+        # If marking as new launch for first time, set the date
+        if is_new_launch_checked and not product.is_new_launch:
+            product.new_launch_date = datetime.utcnow()
+        # If unchecking new launch, clear the date
+        elif not is_new_launch_checked:
+            product.new_launch_date = None
+        
+        product.is_new_launch = is_new_launch_checked
         product.category = request.form.get("category")
         
         sale_price_str = request.form.get("sale_price", "").strip()
         product.sale_price = int(sale_price_str) if sale_price_str else None
 
         # Handle image order
-        import json
         image_order_json = request.form.get("image_order", "")
         if image_order_json:
             try:
@@ -598,7 +688,37 @@ def admin_product_edit(product_id):
         db.session.commit()
         return redirect(url_for("admin_products"))
 
-    return render_template("admin_product_form.html", product=product, categories=CATEGORIES)
+    # FOR GET REQUEST - Load existing variants
+    color_vars = ProductVariant.query.filter_by(product_id=product.id, variant_type='color').all()
+    size_vars = ProductVariant.query.filter_by(product_id=product.id, variant_type='size').all()
+
+    existing_colors = []
+    for cv in color_vars:
+        existing_colors.append({
+            'id': str(cv.id),
+            'name': cv.name,
+            'code': cv.code or '#000000',
+            'price_adj': cv.price_adjustment,
+            'images': json.loads(cv.image_indices) if cv.image_indices else []
+        })
+
+    existing_sizes = []
+    for sv in size_vars:
+        existing_sizes.append({
+            'id': str(sv.id),
+            'name': sv.name,
+            'price_adj': sv.price_adjustment,
+            'images': json.loads(sv.image_indices) if sv.image_indices else []
+        })
+
+    return render_template(
+        "admin_product_form.html", 
+        product=product, 
+        categories=[c.name for c in Category.query.order_by(Category.order_index).all()],
+        existing_color_variants=json.dumps(existing_colors),
+        existing_size_variants=json.dumps(existing_sizes)
+    )
+
 
 @app.route("/admin/products/delete/<int:product_id>", methods=["POST"])
 @admin_required
@@ -887,11 +1007,71 @@ def checkout_ajax():
 
     return jsonify({"order_id": order.id, "total": final_total})  # CHANGE: Return final_total
 
+# ----- CATEGORY MANAGEMENT ROUTES -----
+
+@app.route("/admin/categories")
+@admin_required
+def admin_categories():
+    categories = Category.query.order_by(Category.order_index).all()
+    return render_template("admin_categories.html", categories=categories)
+
+@app.route("/admin/categories/add", methods=["POST"])
+@admin_required
+def admin_category_add():
+    name = request.form.get("name", "").strip()
+    if name:
+        existing = Category.query.filter_by(name=name).first()
+        if not existing:
+            max_order = db.session.query(db.func.max(Category.order_index)).scalar() or -1
+            category = Category(name=name, order_index=max_order + 1)
+            db.session.add(category)
+            db.session.commit()
+            flash(f"Category '{name}' added successfully!", "success")
+        else:
+            flash(f"Category '{name}' already exists!", "warning")
+    return redirect(url_for("admin_categories"))
+
+@app.route("/admin/categories/delete/<int:category_id>", methods=["POST"])
+@admin_required
+def admin_category_delete(category_id):
+    category = Category.query.get_or_404(category_id)
+    # Check if any products use this category
+    products_count = Product.query.filter_by(category=category.name).count()
+    if products_count > 0:
+        flash(f"Cannot delete '{category.name}' - {products_count} products are using it!", "danger")
+    else:
+        db.session.delete(category)
+        db.session.commit()
+        flash(f"Category '{category.name}' deleted!", "success")
+    return redirect(url_for("admin_categories"))
+
+@app.route("/admin/categories/reorder", methods=["POST"])
+@admin_required
+def admin_category_reorder():
+    data = request.get_json()
+    order = data.get("order", [])
+    for idx, cat_id in enumerate(order):
+        category = Category.query.get(int(cat_id))
+        if category:
+            category.order_index = idx
+    db.session.commit()
+    return jsonify({"success": True})
+
 
 # ------------ MAIN ------------
 
 with app.app_context():
     db.create_all()
+    # Initialize default categories if none exist
+    if Category.query.count() == 0:
+        default_categories = [
+            "Seasonal", "Desk Buddies", "Keyrings", 
+            "Mini Bouquet", "Yarn", "Bookmarks", "Forever Flowers"
+        ]
+        for idx, cat_name in enumerate(default_categories):
+            db.session.add(Category(name=cat_name, order_index=idx))
+        db.session.commit()
+        print("✓ Default categories initialized")
     
 if __name__ == "__main__":
     app.run(debug=True)

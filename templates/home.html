@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<!-- Hero Section -->
+<!-- Hero Section with Video -->
 <section class="hero-section">
   <div class="container">
     <div class="row align-items-center">
@@ -24,12 +24,17 @@
         </a>
       </div>
       <div class="col-md-6">
-        <div class="hero-image shadow-sm">
-          <img
-            src="https://images.pexels.com/photos/3945636/pexels-photo-3945636.jpeg"
-            class="img-fluid"
-            alt="Cozy crochet items"
+        <div class="hero-video-container shadow-sm">
+          <video 
+            class="hero-video"
+            autoplay 
+            loop 
+            muted 
+            playsinline
           >
+            <source src="{{ url_for('static', filename='videos/pov.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
         </div>
       </div>
     </div>
@@ -54,11 +59,25 @@
             <a href="/product/{{ product.id }}" class="text-decoration-none text-dark">
               <div class="card border-0 shadow-sm product-card h-100">
                 <div class="position-relative product-image-container">
-                  <img
-                    src="{{ url_for('static', filename=product.image_url) }}"
-                    class="card-img-top main-product-image"
-                    alt="{{ product.name }}"
-                  >
+                  
+                  <!-- FIXED: Safe image display with fallback -->
+                  {% if product.images and product.images|length > 0 %}
+                    <img
+                      src="{{ url_for('static', filename=product.images[0].image_url) }}"
+                      class="card-img-top main-product-image"
+                      alt="{{ product.name }}"
+                    >
+                  {% elif product.image_url %}
+                    <img
+                      src="{{ url_for('static', filename=product.image_url) }}"
+                      class="card-img-top main-product-image"
+                      alt="{{ product.name }}"
+                    >
+                  {% else %}
+                    <div class="bg-light d-flex align-items-center justify-content-center w-100 h-100">
+                      <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                  {% endif %}
                   
                   <!-- Hidden images for hover effect -->
                   {% if product.images and product.images|length > 1 %}
@@ -122,79 +141,43 @@
   </div>
 </section>
 
-<!-- Category Sections -->
+<!-- COMPACT CATEGORIES SECTION - Horizontal scroll with thumbnails -->
 {% if category_products %}
-  {% for category, products in category_products.items() %}
-  <section class="py-4">
-    <div class="container">
-      <div class="d-flex justify-content-between align-items-end mb-3">
-        <div>
-          <h2 class="section-title">{{ category }}</h2>
-          <p class="section-subtitle">Browse our {{ category|lower }} collection</p>
-        </div>
-        <a href="/shop?category={{ category }}" class="small text-decoration-none">View all →</a>
-      </div>
-
-      <div class="row g-3">
-        {% for product in products %}
-          <div class="col-6 col-md-3">
-            <a href="/product/{{ product.id }}" class="text-decoration-none text-dark">
-              <div class="card border-0 shadow-sm product-card h-100">
-                <div class="position-relative">
-                  <img
-                    src="{{ url_for('static', filename=product.image_url) }}"
-                    class="card-img-top"
-                    alt="{{ product.name }}"
-                  >
-                  <!-- Only Bestseller and New Launch badges - NO category badge -->
-                  {% if product.is_bestseller or product.is_new_launch %}
-                  <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1">
-                    {% if product.is_bestseller %}
-                      <span class="badge bg-danger">Bestseller</span>
-                    {% endif %}
-                    {% if product.is_new_launch %}
-                      <span class="badge" style="background-color: #4CAF50;">New Launch</span>
-                    {% endif %}
-                  </div>
-                  {% endif %}
-                  
-                  <!-- Sale Badge -->
-                  {% if product.sale_price %}
-                    <span class="badge position-absolute top-0 end-0 m-2" style="background-color: #FF6B6B;">
-                      SALE
-                    </span>
-                  {% endif %}
-                </div>
-                <div class="card-body">
-                  <h6 class="card-title mb-1">{{ product.name }}</h6>
-                  <p class="small text-muted mb-2">
-                    {{ product.description[:70] }}{% if product.description and product.description|length > 70 %}...{% endif %}
-                  </p>
-                  <div class="d-flex justify-content-between align-items-center">
-                    <!-- Price Display with Sale -->
-                    <div>
-                      {% if product.sale_price %}
-                        <div class="d-flex flex-column">
-                          <span class="text-decoration-line-through text-muted" style="font-size: 0.85rem;">₹{{ product.price }}</span>
-                          <span class="fw-bold" style="color: #FF6B6B;">₹{{ product.sale_price }}</span>
-                        </div>
-                      {% else %}
-                        <span class="fw-semibold">₹{{ product.price }}</span>
-                      {% endif %}
-                    </div>
-                    <a href="/add/{{ product.id }}" class="btn btn-sm btn-outline-dark">
-                      Add to Cart
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        {% endfor %}
+<section class="py-4 categories-preview-section">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end mb-3">
+      <div>
+        <h2 class="section-title">Shop by Category</h2>
+        <p class="section-subtitle">Explore our handcrafted collections</p>
       </div>
     </div>
-  </section>
-  {% endfor %}
+
+    <div class="category-scroll-container">
+      {% for category, products in category_products.items() %}
+      <a href="/shop?category={{ category }}" class="category-card text-decoration-none">
+        <div class="category-thumbnail">
+          {% if products and products|length > 0 %}
+            <!-- FIXED: Safe image display -->
+            {% if products[0].images and products[0].images|length > 0 %}
+              <img src="{{ url_for('static', filename=products[0].images[0].image_url) }}" alt="{{ category }}">
+            {% elif products[0].image_url %}
+              <img src="{{ url_for('static', filename=products[0].image_url) }}" alt="{{ category }}">
+            {% else %}
+              <div class="bg-light d-flex align-items-center justify-content-center w-100 h-100">
+                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+              </div>
+            {% endif %}
+          {% endif %}
+          <div class="category-overlay">
+            <h5 class="category-name">{{ category }}</h5>
+            <p class="category-count">{{ products|length }} items</p>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
 {% endif %}
 
 <!-- Customer Reviews Section -->
@@ -352,6 +335,27 @@
 </section>
 
 <style>
+  /* Hero Section with Video */
+  .hero-section {
+    padding: 4rem 0 3rem 0;
+  }
+
+  .hero-video-container {
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  .hero-video {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
   .section-title {
     font-weight: 700;
     font-size: 1.8rem;
@@ -364,6 +368,7 @@
     margin: 0;
   }
   
+  /* FIXED PRODUCT CARD ASPECT RATIO */
   .product-card {
     transition: transform 0.2s;
     height: 100%;
@@ -376,19 +381,18 @@
   .product-image-container {
     position: relative;
     overflow: hidden;
+    aspect-ratio: 1 / 1; /* FORCE SQUARE ASPECT RATIO */
+    background: #f8f9fa;
+  }
+  
+  .product-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* ENSURE IMAGES FILL THE SPACE */
   }
   
   .main-product-image {
     transition: opacity 0.3s ease;
-  }
-  
-  .hero-image {
-    border-radius: 20px;
-    overflow: hidden;
-  }
-  
-  .hero-image img {
-    border-radius: 20px;
   }
 
   /* Badge styling improvements */
@@ -397,6 +401,106 @@
     padding: 0.35rem 0.65rem;
     font-weight: 600;
     z-index: 10;
+  }
+
+  /* COMPACT CATEGORY SECTION - HORIZONTAL SCROLL */
+  .categories-preview-section {
+    background: linear-gradient(135deg, #FFF8F0 0%, #F5E6D3 100%);
+    padding: 3rem 0;
+  }
+
+  .category-scroll-container {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    padding: 1rem 0;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-scroll-container::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .category-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+  }
+
+  .category-scroll-container::-webkit-scrollbar-thumb {
+    background: #8B6F47;
+    border-radius: 10px;
+  }
+
+  .category-card {
+    flex: 0 0 auto;
+    width: 280px;
+    transition: transform 0.3s ease;
+  }
+
+  .category-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .category-thumbnail {
+    position: relative;
+    height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  .category-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .category-card:hover .category-thumbnail img {
+    transform: scale(1.1);
+  }
+
+  .category-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+    padding: 2rem 1.5rem 1.5rem;
+    color: white;
+  }
+
+  .category-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .category-count {
+    font-size: 0.9rem;
+    margin: 0;
+    opacity: 0.9;
+  }
+
+  /* Responsive video */
+  @media (max-width: 768px) {
+    .hero-video-container {
+      margin-top: 2rem;
+    }
+
+    .category-card {
+      width: 220px;
+    }
+
+    .category-thumbnail {
+      height: 180px;
+    }
+
+    .category-name {
+      font-size: 1.1rem;
+    }
   }
 </style>
 
